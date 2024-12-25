@@ -1,30 +1,63 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 )
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", okorok)
-	mux.HandleFunc("/{id}", okorok)
-	err := http.ListenAndServe(":8080", mux)
-	if err != nil {
+	if err := run(); err != nil {
 		panic(err)
 	}
 }
 
+// запуск сервера
+func run() error {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", okorok)
+	mux.HandleFunc("/{id}", okorok)
+	return http.ListenAndServe(`:8080`, mux)
+}
+
+//
+
+// map
+var myMap = make(map[string]string)
+
+//
+
+// короткая строка
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func RandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
+
+//
+
+// обработчик get post
 func okorok(res http.ResponseWriter, req *http.Request) {
 
 	if req.Method == http.MethodGet {
 		//get
-		if req.PathValue("id") == "EwHXdJfB" {
-			fmt.Println("Parametr ID:", req.PathValue("id"))
+		paramURL := req.PathValue("id")
+		metka := false
+		origURL := ""
+		for key, value := range myMap {
+			if paramURL == value {
+				metka = true
+				origURL = key
+			}
+		}
+		if metka {
 			http.Redirect(res, req,
-				"https://practicum.yandex.ru/",
+				origURL,
 				http.StatusTemporaryRedirect)
 		} else {
 			res.WriteHeader(http.StatusBadRequest)
@@ -36,13 +69,21 @@ func okorok(res http.ResponseWriter, req *http.Request) {
 			log.Fatal(err)
 		}
 		textString := string(text)
-		fmt.Println("Bodyparam:", textString)
-		if textString == "https://practicum.yandex.ru/" {
-			res.WriteHeader(http.StatusCreated)
-			res.Write([]byte("http://localhost:8080/EwHXdJfB"))
-		} else {
-			res.WriteHeader(http.StatusBadRequest)
+		str := RandStringBytes(8)
+		metka := true
+		for key := range myMap {
+			if textString == key {
+				metka = false
+			}
 		}
+		res.WriteHeader(http.StatusCreated)
+		if metka {
+			myMap[textString] = str
+			res.Write([]byte("http://localhost:8080/" + str))
+		} else {
+			res.Write([]byte("http://localhost:8080/" + myMap[textString]))
+		}
+
 	} else {
 		//StatusBadRequest  400
 		res.WriteHeader(http.StatusBadRequest)
