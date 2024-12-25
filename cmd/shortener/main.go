@@ -71,17 +71,21 @@ func okorok(res http.ResponseWriter, req *http.Request) {
 		textString := string(text)
 		str := RandStringBytes(8)
 		metka := true
-		for key := range myMap {
-			if textString == key {
-				metka = false
+		if textString != "" {
+			for key := range myMap {
+				if textString == key {
+					metka = false
+				}
 			}
-		}
-		res.WriteHeader(http.StatusCreated)
-		if metka {
-			myMap[textString] = str
-			res.Write([]byte("http://localhost:8080/" + str))
+			res.WriteHeader(http.StatusCreated)
+			if metka {
+				myMap[textString] = str
+				res.Write([]byte("http://localhost:8080/" + str))
+			} else {
+				res.Write([]byte("http://localhost:8080/" + myMap[textString]))
+			}
 		} else {
-			res.Write([]byte("http://localhost:8080/" + myMap[textString]))
+			res.WriteHeader(http.StatusBadRequest)
 		}
 
 	} else {
