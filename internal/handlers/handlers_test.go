@@ -21,14 +21,14 @@ func TestGetURL(t *testing.T) {
 		url     string
 		want    int
 		request string
-		defUrl  string
+		defURL  string
 	}{
 		{
 			name:    "test#1",
 			url:     "https://www.yandex.ru",
 			want:    307,
 			request: "/",
-			defUrl:  "http://localhost:8080",
+			defURL:  "http://localhost:8080",
 		},
 	}
 	for _, tt := range tests {
@@ -38,7 +38,7 @@ func TestGetURL(t *testing.T) {
 			fmt.Println(tt.request + minURL)
 			request := httptest.NewRequest(http.MethodGet, tt.request+minURL, nil)
 
-			r := Routers(tt.defUrl)
+			r := Routers(tt.defURL)
 			w := httptest.NewRecorder()
 			h := GetURL(*r)
 
@@ -67,7 +67,7 @@ func TestAddURL(t *testing.T) {
 		urlPlain string
 		request  string
 		want     want
-		defUrl   string
+		defURL   string
 	}{
 		{
 			name:     "addurl_test#1",
@@ -77,14 +77,14 @@ func TestAddURL(t *testing.T) {
 				statusCode:  201,
 			},
 			request: "/",
-			defUrl:  "http://localhost:8080",
+			defURL:  "http://localhost:8080",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.urlPlain))
 
-			r := Routers(tt.defUrl)
+			r := Routers(tt.defURL)
 			w := httptest.NewRecorder()
 			h := AddURL(*r)
 
