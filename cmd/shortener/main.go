@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/darkseear/shortener/internal/handlers"
+	"github.com/go-chi/chi/v5"
 )
 
 func main() {
@@ -14,8 +15,15 @@ func main() {
 
 // запуск сервера
 func run() error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handlers.AddURL)
-	mux.HandleFunc("/{id}", handlers.GetURL)
-	return http.ListenAndServe(`:8080`, mux)
+
+	//router chi
+	r := chi.NewRouter()
+
+	r.Post("/", handlers.AddURL)
+	r.Get("/{id}", handlers.GetURL)
+
+	// mux := http.NewServeMux()
+	// mux.HandleFunc("/", handlers.AddURL)
+	// mux.HandleFunc("/{id}", handlers.GetURL)
+	return http.ListenAndServe(`:8080`, r)
 }
