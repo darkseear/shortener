@@ -47,8 +47,8 @@ func TestGetURL(t *testing.T) {
 
 			newURL, err := io.ReadAll(result.Body)
 			require.NoError(t, err)
-
-			fmt.Println(string(newURL))
+			err = result.Body.Close()
+			require.NoError(t, err)
 			assert.NotNil(t, newURL)
 		})
 	}
