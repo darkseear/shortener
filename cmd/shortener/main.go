@@ -5,7 +5,6 @@ import (
 
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/handlers"
-	"github.com/go-chi/chi/v5"
 )
 
 func main() {
@@ -22,10 +21,7 @@ func run() error {
 	address := config.Address
 
 	//router chi
-	r := chi.NewRouter()
-
-	r.Post("/", handlers.AddURL)
-	r.Get("/{id}", handlers.GetURL)
+	r := handlers.Routers(config.URL).Handle
 
 	return http.ListenAndServe(address, r)
 }
