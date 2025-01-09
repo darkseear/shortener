@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/storage"
 )
 
@@ -54,6 +55,8 @@ func AddURL(res http.ResponseWriter, req *http.Request) {
 
 	defer req.Body.Close()
 
+	config := config.New()
+
 	strURL := string(body)
 	minURL := storage.RandStringBytes(8)
 	if strURL == "" {
@@ -68,8 +71,8 @@ func AddURL(res http.ResponseWriter, req *http.Request) {
 
 	if s[strURL] == "" {
 		s[strURL] = minURL
-		res.Write([]byte("http://localhost:8080/" + minURL))
+		res.Write([]byte(config.URL + "/" + minURL))
 	} else {
-		res.Write([]byte("http://localhost:8080/" + s[strURL]))
+		res.Write([]byte(config.URL + "/" + s[strURL]))
 	}
 }

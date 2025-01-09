@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/handlers"
 	"github.com/go-chi/chi/v5"
 )
@@ -16,14 +17,15 @@ func main() {
 // запуск сервера
 func run() error {
 
+	//config
+	config := config.New()
+	address := config.Address
+
 	//router chi
 	r := chi.NewRouter()
 
 	r.Post("/", handlers.AddURL)
 	r.Get("/{id}", handlers.GetURL)
 
-	// mux := http.NewServeMux()
-	// mux.HandleFunc("/", handlers.AddURL)
-	// mux.HandleFunc("/{id}", handlers.GetURL)
-	return http.ListenAndServe(`:8080`, r)
+	return http.ListenAndServe(address, r)
 }
