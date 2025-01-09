@@ -59,17 +59,17 @@ func main() {
 	fmt.Println(string(body))
 
 	//гет запрос
-	request_2, err_2 := http.NewRequest(http.MethodGet, string(body), nil)
-	if err_2 != nil {
-		panic(err_2)
+	request2, err2 := http.NewRequest(http.MethodGet, string(body), nil)
+	if err2 != nil {
+		panic(err2)
 	}
 
-	response_2, err_3 := client.Do(request_2)
-	if err_3 != nil {
-		panic(err_3)
+	response2, err3 := client.Do(request2)
+	if err3 != nil {
+		panic(err3)
 	}
 
-	defer response_2.Body.Close()
-	fmt.Println("Статус-код ", response_2.Status)
+	defer response2.Body.Close()
+	fmt.Println("Статус-код ", response2.Status)
 
 }
