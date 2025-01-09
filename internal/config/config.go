@@ -1,6 +1,9 @@
 package config
 
-import "flag"
+import (
+	"flag"
+	"os"
+)
 
 type Config struct {
 	Address string
@@ -14,5 +17,16 @@ func New() *Config {
 	flag.StringVar(&config.URL, "b", "http://localhost:8080", "last url")
 
 	flag.Parse()
+
+	serverAddress := os.Getenv("SERVER_ADDRESS")
+	baseURL := os.Getenv("BASE_URL")
+
+	if serverAddress != "" {
+		config.Address = serverAddress
+	}
+	if baseURL != "" {
+		config.URL = baseURL
+	}
+
 	return &config
 }
