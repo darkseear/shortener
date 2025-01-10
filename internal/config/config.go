@@ -18,14 +18,11 @@ func New() *Config {
 
 	flag.Parse()
 
-	serverAddress := os.Getenv("SERVER_ADDRESS")
-	baseURL := os.Getenv("BASE_URL")
-
-	if serverAddress != "" {
-		config.Address = serverAddress
+	if val, state := os.LookupEnv("SERVER_ADDRESS"); state {
+		config.Address = val
 	}
-	if baseURL != "" {
-		config.URL = baseURL
+	if val, state := os.LookupEnv("BASE_URL"); state {
+		config.URL = val
 	}
 
 	return &config
