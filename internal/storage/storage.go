@@ -5,6 +5,14 @@ import "math/rand"
 // map как хранилище
 var MyMap = make(map[string]string)
 
+type StorageServise struct {
+	Storage map[string]string
+}
+
+func NewStorageServise() *StorageServise {
+	return &StorageServise{MyMap}
+}
+
 //строка из которой будем брать символы для преобразования в короткую строку
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 

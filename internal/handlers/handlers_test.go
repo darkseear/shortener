@@ -34,7 +34,8 @@ func TestGetURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			minURL := storage.RandStringBytes(8)
-			storage.MyMap[tt.url] = minURL
+			stor := storage.NewStorageServise().Storage
+			stor[tt.url] = minURL
 			fmt.Println(tt.request + minURL)
 			request := httptest.NewRequest(http.MethodGet, tt.request+minURL, nil)
 

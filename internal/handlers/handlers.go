@@ -10,6 +10,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+const sizeURL int = 8
+
 type Router struct {
 	Handle *chi.Mux
 	URL    string
@@ -77,22 +79,22 @@ func AddURL(r Router) http.HandlerFunc {
 		defer req.Body.Close()
 
 		strURL := string(body)
-		minURL := storage.RandStringBytes(8)
+		minURL := storage.RandStringBytes(sizeURL)
 		if strURL == "" {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		s := storage.MyMap
+		stor := storage.NewStorageServise().Storage
 		res.Header().Set("Content-Type", "text/plain")
 
 		res.WriteHeader(http.StatusCreated)
 
-		if s[strURL] == "" {
-			s[strURL] = minURL
+		if stor[strURL] == "" {
+			stor[strURL] = minURL
 			res.Write([]byte(r.URL + "/" + minURL))
 		} else {
-			res.Write([]byte(r.URL + "/" + s[strURL]))
+			res.Write([]byte(r.URL + "/" + stor[strURL]))
 		}
 	}
 }
