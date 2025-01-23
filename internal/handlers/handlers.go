@@ -50,7 +50,7 @@ func GetURL(r Router) http.HandlerFunc {
 			return
 		}
 
-		s := storage.MyMap
+		s := storage.NewStorageServise().Storage
 
 		for key, value := range s {
 			if paramURLID == value {

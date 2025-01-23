@@ -8,6 +8,8 @@ import (
 // map как хранилище
 var MyMap = make(map[string]string)
 
+type MemoryStorage map[string]string
+
 type StorageServise struct {
 	Storage map[string]string
 }
