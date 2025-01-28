@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/darkseear/shortener/internal/storage"
+	"github.com/darkseear/shortener/internal/services"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,13 +33,14 @@ func TestGetURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			minURL := storage.RandStringBytes(8)
-			stor := storage.NewStorageServise().Storage
-			stor[tt.url] = minURL
+			// minURL := storage.RandStringBytes(8)
+			// stor := storage.NewStorageServise().Storage
+			m := services.NewMemory()
+			minURL := m.ShortenURL(tt.url)
 			fmt.Println(tt.request + minURL)
 			request := httptest.NewRequest(http.MethodGet, tt.request+minURL, nil)
 
-			r := Routers(tt.defURL)
+			r := Routers(tt.defURL, m)
 			w := httptest.NewRecorder()
 			h := GetURL(*r)
 
@@ -85,7 +86,8 @@ func TestAddURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.urlPlain))
 
-			r := Routers(tt.defURL)
+			m := services.NewMemory()
+			r := Routers(tt.defURL, m)
 			w := httptest.NewRecorder()
 			h := AddURL(*r)
 

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -10,18 +9,18 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-const sizeURL int = 8
-
 type Router struct {
 	Handle *chi.Mux
 	URL    string
+	Memory storage.URLService
 }
 
-func Routers(url string) *Router {
+func Routers(url string, m storage.URLService) *Router {
 
 	r := Router{
 		Handle: chi.NewRouter(),
 		URL:    url,
+		Memory: m,
 	}
 
 	r.Handle.Post("/", AddURL(r))
@@ -38,38 +37,33 @@ func GetURL(r Router) http.HandlerFunc {
 			return
 		}
 
-		// paramURLID := req.PathValue("id")
-		// fmt.Println(req.URL)
-
 		path := strings.TrimSuffix(strings.TrimPrefix(req.URL.Path, "/"), "/")
 		parts := strings.Split(path, "/")
 		paramURLID := parts[0]
+
 		if paramURLID == "" {
-			fmt.Println("tut")
 			http.Error(res, "Not found", http.StatusBadRequest)
 			return
 		}
 
-		s := storage.NewStorageServise().Storage
-
-		for key, value := range s {
-			if paramURLID == value {
-				http.Redirect(res, req,
-					key,
-					http.StatusTemporaryRedirect)
-				return
-			}
+		count, err := r.Memory.GetOriginalURL(paramURLID)
+		if err != nil {
+			res.WriteHeader(http.StatusBadRequest)
+			return
 		}
+
+		http.Redirect(res, req, count, http.StatusTemporaryRedirect)
+
 	}
 }
 
 func AddURL(r Router) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodPost {
-			//StatusBadRequest  400
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
+
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
@@ -79,22 +73,13 @@ func AddURL(r Router) http.HandlerFunc {
 		defer req.Body.Close()
 
 		strURL := string(body)
-		minURL := storage.RandStringBytes(sizeURL)
 		if strURL == "" {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		stor := storage.NewStorageServise().Storage
 		res.Header().Set("Content-Type", "text/plain")
-
 		res.WriteHeader(http.StatusCreated)
-
-		if stor[strURL] == "" {
-			stor[strURL] = minURL
-			res.Write([]byte(r.URL + "/" + minURL))
-		} else {
-			res.Write([]byte(r.URL + "/" + stor[strURL]))
-		}
+		res.Write([]byte(r.URL + "/" + r.Memory.ShortenURL(strURL)))
 	}
 }

@@ -3,39 +3,44 @@ package services
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 
 	"github.com/darkseear/shortener/internal/storage"
 )
 
-const sizeURL = 8
+const sizeURL int64 = 8
 
-type URLService interface {
-	ShortenURL(longURL string) string
-	GetOriginalURL(shortURL string) (string, error)
+type LocalMemory struct {
+	localMemory *storage.MemoryStorage
 }
 
-type Handler struct {
-	service URLService
-	baseURL string
+func NewMemory() *LocalMemory {
+	return &LocalMemory{&storage.MemoryStorage{
+		Memory: make(map[string]string),
+	}}
 }
 
-func NewHandler(service URLService, baseURL string) *Handler {
-	return &Handler{service: service, baseURL: baseURL}
+func (s *LocalMemory) ShortenURL(longURL string) string {
+	shortURL := GenerateShortURL(sizeURL)
+	s.localMemory.Memory[shortURL] = longURL
+	return shortURL
 }
 
-func ShortenURL(longURL string) string {
-	s := storage.NewStorageServise().Storage
-	b := make([]byte, sizeURL)
+func (s *LocalMemory) GetOriginalURL(shortURL string) (string, error) {
+	count, ok := s.localMemory.Memory[shortURL]
+	if !ok {
+		return "", fmt.Errorf("error short")
+	}
+
+	return count, nil
+}
+
+func GenerateShortURL(i int64) string {
+	b := make([]byte, i)
 	_, err := rand.Read(b)
 	if err != nil {
 		panic(err)
 	}
 	shortURL := base64.URLEncoding.EncodeToString(b)
-	s[shortURL] = longURL
 	return shortURL
-}
-
-func GetOriginalURL(shortURL string) (string, error) {
-	s := storage.NewStorageServise().Storage
-	return s[shortURL], nil
 }
