@@ -5,7 +5,9 @@ import (
 
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/handlers"
+	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/services"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -20,10 +22,15 @@ func run() error {
 	//config
 	config := config.New()
 	address := config.Address
+	LogLevel := config.LogLevel
+	if err := logger.Initialize(LogLevel); err != nil {
+		return err
+	}
 
 	m := services.NewMemory()
 	//router chi
 	r := handlers.Routers(config.URL, m).Handle
 
+	logger.Log.Info("Running server", zap.String("address", address))
 	return http.ListenAndServe(address, r)
 }
