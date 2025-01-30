@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/services"
 
 	"github.com/stretchr/testify/assert"
@@ -42,7 +43,7 @@ func TestGetURL(t *testing.T) {
 
 			r := Routers(tt.defURL, m)
 			w := httptest.NewRecorder()
-			h := GetURL(*r)
+			h := logger.WhithLogging(GetURL(*r))
 
 			h(w, request)
 			result := w.Result()
@@ -89,7 +90,7 @@ func TestAddURL(t *testing.T) {
 			m := services.NewMemory()
 			r := Routers(tt.defURL, m)
 			w := httptest.NewRecorder()
-			h := AddURL(*r)
+			h := logger.WhithLogging(AddURL(*r))
 
 			h(w, request)
 

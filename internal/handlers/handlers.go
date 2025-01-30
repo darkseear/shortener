@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
@@ -27,11 +26,11 @@ func Routers(url string, m storage.URLService) *Router {
 		Memory: m,
 	}
 
-	logging := logger.WhithLogging
+	// logging := logger.WhithLogging
 
-	r.Handle.Post("/", logging(AddURL(r)))
-	r.Handle.Get("/{id}", logging(GetURL(r)))
-	r.Handle.Post("/api/shorten", logging(Shorten(r)))
+	r.Handle.Post("/", AddURL(r))
+	r.Handle.Get("/{id}", GetURL(r))
+	r.Handle.Post("/api/shorten", Shorten(r))
 
 	return &r
 }
