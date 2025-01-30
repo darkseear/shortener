@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/darkseear/shortener/internal/logger"
+	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
 )
@@ -28,6 +31,7 @@ func Routers(url string, m storage.URLService) *Router {
 
 	r.Handle.Post("/", logging(AddURL(r)))
 	r.Handle.Get("/{id}", logging(GetURL(r)))
+	r.Handle.Post("/api/shorten", logging(Shorten(r)))
 
 	return &r
 }
@@ -84,5 +88,53 @@ func AddURL(r Router) http.HandlerFunc {
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte(r.URL + "/" + r.Memory.ShortenURL(strURL)))
+	}
+}
+
+func Shorten(r Router) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost {
+			res.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		var buf bytes.Buffer
+		var shortenJSON models.ShortenJSON
+		var longJSON models.LongJSON
+		//read body request
+		_, err := buf.ReadFrom(req.Body)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		//deserial JSON
+		if err = json.Unmarshal(buf.Bytes(), &longJSON); err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		longURL := longJSON.URL
+
+		if longURL == "" {
+			res.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		shortenURL := r.Memory.ShortenURL(longURL)
+
+		shortenJSON.Result = r.URL + "/" + shortenURL
+		resp, err := json.Marshal(shortenJSON)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		defer req.Body.Close()
+
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(http.StatusCreated)
+		// json
+		res.Write(resp)
 	}
 }
