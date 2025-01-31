@@ -30,12 +30,11 @@ func run() error {
 		return err
 	}
 
-	m, err := services.NewMemory().MemoryFileSave(fileName)
+	m := services.NewMemory()
+	err := services.MemoryFileSave(fileName, m)
 	if err != nil {
 		return err
 	}
-
-	// m := services.NewMemory()
 	//router chi
 	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config.URL, m).Handle)))
 

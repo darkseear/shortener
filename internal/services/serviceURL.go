@@ -32,7 +32,7 @@ func (s *LocalMemory) ShortenURL(longURL string) string {
 	fileName := "memory.log"
 	p, err := NewProducer(fileName)
 	if err != nil {
-		fmt.Errorf("error short", err)
+		panic(err)
 	}
 	m := models.MemoryFile{ShortURL: shortURL, LongURL: longURL}
 	p.WriteMemoryFile(&m)
