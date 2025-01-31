@@ -84,9 +84,9 @@ func (c *Consumer) Close() error {
 	return c.file.Close()
 }
 
-func MemoryFileSave(filename string) (*LocalMemory, error) {
+func (m *LocalMemory) MemoryFileSave(filename string) (*LocalMemory, error) {
 
-	m := NewMemory()
+	// m := NewMemory()
 
 	Producer, err := NewProducer(filename)
 	if err != nil {
@@ -110,10 +110,10 @@ func MemoryFileSave(filename string) (*LocalMemory, error) {
 	}
 
 	for key, item := range readMemoryFile {
-		fmt.Println("key" + key)
-		fmt.Println("item" + item)
+		m.localMemory.Memory[key] = item
 	}
 
 	fmt.Println(readMemoryFile)
+	fmt.Println(m.localMemory.Memory)
 	return m, nil
 }

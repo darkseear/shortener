@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/darkseear/shortener/internal/logger"
+	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/storage"
 	"go.uber.org/zap"
 )
@@ -27,6 +28,16 @@ func (s *LocalMemory) ShortenURL(longURL string) string {
 	shortURL := GenerateShortURL(sizeURL)
 	s.localMemory.Memory[shortURL] = longURL
 	logger.Log.Info("Add in storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
+
+	fileName := "memory.log"
+	p, err := NewProducer(fileName)
+	if err != nil {
+		fmt.Errorf("error short", err)
+	}
+	m := models.MemoryFile{ShortURL: shortURL, LongURL: longURL}
+	p.WriteMemoryFile(&m)
+	defer p.Close()
+
 	return shortURL
 }
 

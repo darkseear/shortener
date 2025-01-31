@@ -30,7 +30,7 @@ func run() error {
 		return err
 	}
 
-	m, err := services.MemoryFileSave(fileName)
+	m, err := services.NewMemory().MemoryFileSave(fileName)
 	if err != nil {
 		return err
 	}

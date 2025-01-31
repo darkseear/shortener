@@ -18,7 +18,7 @@ func New() *Config {
 	flag.StringVar(&config.Address, "a", "localhost:8080", "server url")
 	flag.StringVar(&config.URL, "b", "http://localhost:8080", "last url")
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
-	flag.StringVar(&config.MemoryFile, "f", "memory.json", "path storage file")
+	flag.StringVar(&config.MemoryFile, "f", "memory.log", "path storage file")
 
 	flag.Parse()
 
