@@ -24,11 +24,18 @@ func run() error {
 	config := config.New()
 	address := config.Address
 	LogLevel := config.LogLevel
+	fileName := config.MemoryFile
+
 	if err := logger.Initialize(LogLevel); err != nil {
 		return err
 	}
 
-	m := services.NewMemory()
+	m, err := services.MemoryFileSave(fileName)
+	if err != nil {
+		return err
+	}
+
+	// m := services.NewMemory()
 	//router chi
 	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config.URL, m).Handle)))
 

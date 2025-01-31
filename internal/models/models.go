@@ -7,3 +7,8 @@ type ShortenJSON struct {
 type LongJSON struct {
 	URL string `json:"url"`
 }
+
+type MemoryFile struct {
+	ShortURL string `json:"shortURL"`
+	LongURL  string `json:"longURL"`
+}
