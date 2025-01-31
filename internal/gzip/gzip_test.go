@@ -62,7 +62,7 @@ func TestGzipCompression(t *testing.T) {
 		})
 	}
 
-	tests_two := []struct {
+	testsTwo := []struct {
 		name        string
 		statusWant  int
 		requestBody string
@@ -74,7 +74,7 @@ func TestGzipCompression(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests_two {
+	for _, tt := range testsTwo {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := bytes.NewBufferString(tt.requestBody)
 			r := httptest.NewRequest("POST", srv.URL, buf)
