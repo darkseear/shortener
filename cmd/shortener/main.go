@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"path/filepath"
 
@@ -43,7 +42,6 @@ func run() error {
 	}
 	config.MemoryFile = absPath
 	fileName = config.MemoryFile
-	fmt.Println(absPath)
 	//router chi
 	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config.URL, m, fileName).Handle)))
 

@@ -3,7 +3,6 @@ package gzip
 import (
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,7 +18,6 @@ func TestGzipCompression(t *testing.T) {
 
 	m := services.NewMemory()
 	conf := config.New().MemoryFile
-	fmt.Println(conf)
 	rw := handlers.Routers("http://localhost:8080", m, conf)
 	handler := http.HandlerFunc(GzipMiddleware(handlers.Shorten(*rw)))
 	srv := httptest.NewServer(handler)

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -41,7 +40,6 @@ func TestGetURL(t *testing.T) {
 			m := services.NewMemory()
 			r := Routers(tt.defURL, m, tt.testFile)
 			minURL := m.ShortenURL(tt.url, tt.testFile)
-			fmt.Println(tt.request + minURL)
 			request := httptest.NewRequest(http.MethodGet, tt.request+minURL, nil)
 			w := httptest.NewRecorder()
 			h := logger.WhithLogging(GetURL(*r))
