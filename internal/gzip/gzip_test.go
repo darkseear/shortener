@@ -3,11 +3,13 @@ package gzip
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/handlers"
 	"github.com/darkseear/shortener/internal/services"
 	"github.com/stretchr/testify/require"
@@ -16,7 +18,9 @@ import (
 func TestGzipCompression(t *testing.T) {
 
 	m := services.NewMemory()
-	rw := handlers.Routers("http://localhost:8080", m)
+	conf := config.New().MemoryFile
+	fmt.Println(conf)
+	rw := handlers.Routers("http://localhost:8080", m, conf)
 	handler := http.HandlerFunc(GzipMiddleware(handlers.Shorten(*rw)))
 	srv := httptest.NewServer(handler)
 	defer srv.Close()

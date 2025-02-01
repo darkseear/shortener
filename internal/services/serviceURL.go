@@ -24,12 +24,14 @@ func NewMemory() *LocalMemory {
 	}}
 }
 
-func (s *LocalMemory) ShortenURL(longURL string) string {
+func (s *LocalMemory) ShortenURL(longURL string, fileName string) string {
 	shortURL := GenerateShortURL(sizeURL)
 	s.localMemory.Memory[shortURL] = longURL
 	logger.Log.Info("Add in storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
 
-	fileName := "memory.log"
+	// fileName := config.New().MemoryFile
+	// config := config.New()
+
 	p, err := NewProducer(fileName)
 	if err != nil {
 		panic(err)

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"path/filepath"
 
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/gzip"
@@ -35,8 +37,15 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	absPath, err := filepath.Abs(fileName)
+	if err != nil {
+		return err
+	}
+	config.MemoryFile = absPath
+	fileName = config.MemoryFile
+	fmt.Println(absPath)
 	//router chi
-	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config.URL, m).Handle)))
+	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config.URL, m, fileName).Handle)))
 
 	logger.Log.Info("Running server", zap.String("address", address))
 	return http.ListenAndServe(address, r)

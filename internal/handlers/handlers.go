@@ -13,17 +13,19 @@ import (
 )
 
 type Router struct {
-	Handle *chi.Mux
-	URL    string
-	Memory storage.URLService
+	Handle   *chi.Mux
+	URL      string
+	Memory   storage.URLService
+	FileName string
 }
 
-func Routers(url string, m storage.URLService) *Router {
+func Routers(url string, m storage.URLService, fileName string) *Router {
 
 	r := Router{
-		Handle: chi.NewRouter(),
-		URL:    url,
-		Memory: m,
+		Handle:   chi.NewRouter(),
+		URL:      url,
+		Memory:   m,
+		FileName: fileName,
 	}
 
 	// logging := logger.WhithLogging
@@ -86,7 +88,7 @@ func AddURL(r Router) http.HandlerFunc {
 
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
-		res.Write([]byte(r.URL + "/" + r.Memory.ShortenURL(strURL)))
+		res.Write([]byte(r.URL + "/" + r.Memory.ShortenURL(strURL, r.FileName)))
 	}
 }
 
@@ -120,7 +122,7 @@ func Shorten(r Router) http.HandlerFunc {
 			return
 		}
 
-		shortenURL := r.Memory.ShortenURL(longURL)
+		shortenURL := r.Memory.ShortenURL(longURL, r.FileName)
 
 		shortenJSON.Result = r.URL + "/" + shortenURL
 		resp, err := json.Marshal(shortenJSON)
