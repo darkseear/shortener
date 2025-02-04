@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/services"
 
 	"github.com/stretchr/testify/assert"
@@ -17,18 +17,20 @@ import (
 func TestGetURL(t *testing.T) {
 
 	tests := []struct {
-		name    string
-		url     string
-		want    int
-		request string
-		defURL  string
+		name     string
+		url      string
+		want     int
+		request  string
+		defURL   string
+		testFile string
 	}{
 		{
-			name:    "test#1",
-			url:     "https://www.yandex.ru",
-			want:    307,
-			request: "/",
-			defURL:  "http://localhost:8080",
+			name:     "test#1",
+			url:      "https://www.yandex.ru",
+			want:     307,
+			request:  "/",
+			testFile: "memory.log",
+			defURL:   "http://localhost:8080",
 		},
 	}
 	for _, tt := range tests {
@@ -36,13 +38,11 @@ func TestGetURL(t *testing.T) {
 			// minURL := storage.RandStringBytes(8)
 			// stor := storage.NewStorageServise().Storage
 			m := services.NewMemory()
-			minURL := m.ShortenURL(tt.url)
-			fmt.Println(tt.request + minURL)
+			r := Routers(tt.defURL, m, tt.testFile)
+			minURL := m.ShortenURL(tt.url, tt.testFile)
 			request := httptest.NewRequest(http.MethodGet, tt.request+minURL, nil)
-
-			r := Routers(tt.defURL, m)
 			w := httptest.NewRecorder()
-			h := GetURL(*r)
+			h := logger.WhithLogging(GetURL(*r))
 
 			h(w, request)
 			result := w.Result()
@@ -70,10 +70,12 @@ func TestAddURL(t *testing.T) {
 		request  string
 		want     want
 		defURL   string
+		testFile string
 	}{
 		{
 			name:     "addurl_test#1",
 			urlPlain: "https://www.yandex.ru",
+			testFile: "memory.log",
 			want: want{
 				contentType: "text/plain",
 				statusCode:  201,
@@ -87,9 +89,9 @@ func TestAddURL(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.urlPlain))
 
 			m := services.NewMemory()
-			r := Routers(tt.defURL, m)
+			r := Routers(tt.defURL, m, tt.testFile)
 			w := httptest.NewRecorder()
-			h := AddURL(*r)
+			h := logger.WhithLogging(AddURL(*r))
 
 			h(w, request)
 

@@ -5,7 +5,10 @@ import (
 	"encoding/base64"
 	"fmt"
 
+	"github.com/darkseear/shortener/internal/logger"
+	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/storage"
+	"go.uber.org/zap"
 )
 
 const sizeURL int64 = 8
@@ -15,14 +18,25 @@ type LocalMemory struct {
 }
 
 func NewMemory() *LocalMemory {
+	logger.Log.Info("Create storage")
 	return &LocalMemory{&storage.MemoryStorage{
 		Memory: make(map[string]string),
 	}}
 }
 
-func (s *LocalMemory) ShortenURL(longURL string) string {
+func (s *LocalMemory) ShortenURL(longURL string, fileName string) string {
 	shortURL := GenerateShortURL(sizeURL)
 	s.localMemory.Memory[shortURL] = longURL
+	logger.Log.Info("Add in storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
+
+	p, err := NewProducer(fileName)
+	if err != nil {
+		panic(err)
+	}
+	m := models.MemoryFile{ShortURL: shortURL, LongURL: longURL}
+	p.WriteMemoryFile(&m)
+	defer p.Close()
+
 	return shortURL
 }
 
@@ -31,7 +45,7 @@ func (s *LocalMemory) GetOriginalURL(shortURL string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("error short")
 	}
-
+	logger.Log.Info("Get url from storage", zap.String("shortURL", shortURL), zap.String("originalURL", count))
 	return count, nil
 }
 
