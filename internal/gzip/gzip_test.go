@@ -17,8 +17,10 @@ import (
 func TestGzipCompression(t *testing.T) {
 
 	m := services.NewMemory()
-	conf := config.New().MemoryFile
-	rw := handlers.Routers("http://localhost:8080", m, conf)
+	config := config.New()
+	fileName := config.MemoryFile
+	bdInfo := config.DatabaseDSN
+	rw := handlers.Routers("http://localhost:8080", m, fileName, bdInfo)
 	handler := http.HandlerFunc(GzipMiddleware(handlers.Shorten(*rw)))
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
