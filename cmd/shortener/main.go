@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"path/filepath"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
+
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/gzip"
 	"github.com/darkseear/shortener/internal/handlers"

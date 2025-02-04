@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -10,6 +12,7 @@ import (
 	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Router struct {
@@ -33,6 +36,7 @@ func Routers(url string, m storage.URLService, fileName string) *Router {
 	r.Handle.Post("/", AddURL(r))
 	r.Handle.Get("/{id}", GetURL(r))
 	r.Handle.Post("/api/shorten", Shorten(r))
+	r.Handle.Get("/ping", PingDB(r))
 
 	return &r
 }
@@ -137,5 +141,27 @@ func Shorten(r Router) http.HandlerFunc {
 		res.WriteHeader(http.StatusCreated)
 		// json
 		res.Write(resp)
+	}
+}
+
+func PingDB(r Router) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+
+		ps := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable",
+			`localhost`, `videos`, `userpassword`, `videos`)
+
+		db, errSql := sql.Open("pgx", ps)
+		if errSql != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if err := db.Ping(); err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		defer db.Close()
+		res.WriteHeader(http.StatusOK)
 	}
 }

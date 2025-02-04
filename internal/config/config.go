@@ -6,10 +6,11 @@ import (
 )
 
 type Config struct {
-	Address    string
-	URL        string
-	LogLevel   string
-	MemoryFile string
+	Address     string
+	URL         string
+	LogLevel    string
+	MemoryFile  string
+	DatabaseDSN string
 }
 
 func New() *Config {
@@ -19,6 +20,7 @@ func New() *Config {
 	flag.StringVar(&config.URL, "b", "http://localhost:8080", "last url")
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 	flag.StringVar(&config.MemoryFile, "f", "memory.log", "path storage file")
+	flag.StringVar(&config.DatabaseDSN, "d", "", "Database DSN")
 
 	flag.Parse()
 
@@ -33,6 +35,9 @@ func New() *Config {
 	}
 	if val, state := os.LookupEnv("FILE_STORAGE_PATH"); state {
 		config.MemoryFile = val
+	}
+	if val, state := os.LookupEnv("DATABASE_DSN"); state {
+		config.DatabaseDSN = val
 	}
 
 	return &config
