@@ -152,9 +152,9 @@ func PingDB(r Router) http.HandlerFunc {
 
 		fmt.Println(r.DDB)
 
-		db, errSql := sql.Open("pgx", r.DDB)
-		if errSql != nil {
-			logger.Log.Error(errSql.Error())
+		db, errSQL := sql.Open("pgx", r.DDB)
+		if errSQL != nil {
+			logger.Log.Error(errSQL.Error())
 			res.WriteHeader(http.StatusInternalServerError)
 		}
 
