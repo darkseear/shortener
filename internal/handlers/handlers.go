@@ -2,14 +2,18 @@ package handlers
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
+	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Router struct {
@@ -17,15 +21,17 @@ type Router struct {
 	URL      string
 	Memory   storage.URLService
 	FileName string
+	DDB      string
 }
 
-func Routers(url string, m storage.URLService, fileName string) *Router {
+func Routers(url string, m storage.URLService, fileName string, DDB string) *Router {
 
 	r := Router{
 		Handle:   chi.NewRouter(),
 		URL:      url,
 		Memory:   m,
 		FileName: fileName,
+		DDB:      DDB,
 	}
 
 	// logging := logger.WhithLogging
@@ -33,6 +39,7 @@ func Routers(url string, m storage.URLService, fileName string) *Router {
 	r.Handle.Post("/", AddURL(r))
 	r.Handle.Get("/{id}", GetURL(r))
 	r.Handle.Post("/api/shorten", Shorten(r))
+	r.Handle.Get("/ping", PingDB(r))
 
 	return &r
 }
@@ -137,5 +144,26 @@ func Shorten(r Router) http.HandlerFunc {
 		res.WriteHeader(http.StatusCreated)
 		// json
 		res.Write(resp)
+	}
+}
+
+func PingDB(r Router) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+
+		fmt.Println(r.DDB)
+
+		db, errSQL := sql.Open("pgx", r.DDB)
+		if errSQL != nil {
+			logger.Log.Error(errSQL.Error())
+			res.WriteHeader(http.StatusInternalServerError)
+		}
+
+		if errPing := db.Ping(); errPing != nil {
+			logger.Log.Error(errPing.Error())
+			res.WriteHeader(http.StatusInternalServerError)
+		}
+
+		defer db.Close()
+		res.WriteHeader(http.StatusOK)
 	}
 }

@@ -23,6 +23,7 @@ func TestGetURL(t *testing.T) {
 		request  string
 		defURL   string
 		testFile string
+		bdInfo   string
 	}{
 		{
 			name:     "test#1",
@@ -30,15 +31,14 @@ func TestGetURL(t *testing.T) {
 			want:     307,
 			request:  "/",
 			testFile: "memory.log",
+			bdInfo:   "host=localhost user=videos password=userpassword dbname=videos sslmode=disable",
 			defURL:   "http://localhost:8080",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// minURL := storage.RandStringBytes(8)
-			// stor := storage.NewStorageServise().Storage
 			m := services.NewMemory()
-			r := Routers(tt.defURL, m, tt.testFile)
+			r := Routers(tt.defURL, m, tt.testFile, tt.bdInfo)
 			minURL := m.ShortenURL(tt.url, tt.testFile)
 			request := httptest.NewRequest(http.MethodGet, tt.request+minURL, nil)
 			w := httptest.NewRecorder()
@@ -71,11 +71,13 @@ func TestAddURL(t *testing.T) {
 		want     want
 		defURL   string
 		testFile string
+		bdInfo   string
 	}{
 		{
 			name:     "addurl_test#1",
 			urlPlain: "https://www.yandex.ru",
 			testFile: "memory.log",
+			bdInfo:   "host=localhost user=videos password=userpassword dbname=videos sslmode=disable",
 			want: want{
 				contentType: "text/plain",
 				statusCode:  201,
@@ -89,7 +91,7 @@ func TestAddURL(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.urlPlain))
 
 			m := services.NewMemory()
-			r := Routers(tt.defURL, m, tt.testFile)
+			r := Routers(tt.defURL, m, tt.testFile, tt.bdInfo)
 			w := httptest.NewRecorder()
 			h := logger.WhithLogging(AddURL(*r))
 

@@ -26,6 +26,7 @@ func run() error {
 	address := config.Address
 	LogLevel := config.LogLevel
 	fileName := config.MemoryFile
+	DDB := config.DatabaseDSN
 
 	if err := logger.Initialize(LogLevel); err != nil {
 		return err
@@ -43,7 +44,7 @@ func run() error {
 	config.MemoryFile = absPath
 	fileName = config.MemoryFile
 	//router chi
-	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config.URL, m, fileName).Handle)))
+	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config.URL, m, fileName, DDB).Handle)))
 
 	logger.Log.Info("Running server", zap.String("address", address))
 	return http.ListenAndServe(address, r)
