@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/storage"
 	"github.com/go-chi/chi/v5"
@@ -20,15 +21,17 @@ type Router struct {
 	URL      string
 	Memory   storage.URLService
 	FileName string
+	DDB      string
 }
 
-func Routers(url string, m storage.URLService, fileName string) *Router {
+func Routers(url string, m storage.URLService, fileName string, DDB string) *Router {
 
 	r := Router{
 		Handle:   chi.NewRouter(),
 		URL:      url,
 		Memory:   m,
 		FileName: fileName,
+		DDB:      DDB,
 	}
 
 	// logging := logger.WhithLogging
@@ -147,18 +150,17 @@ func Shorten(r Router) http.HandlerFunc {
 func PingDB(r Router) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 
-		ps := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable",
-			`localhost`, `videos`, `userpassword`, `videos`)
+		fmt.Println(r.DDB)
 
-		db, errSql := sql.Open("pgx", ps)
+		db, errSql := sql.Open("pgx", r.DDB)
 		if errSql != nil {
+			logger.Log.Error(errSql.Error())
 			res.WriteHeader(http.StatusInternalServerError)
-			return
 		}
 
-		if err := db.Ping(); err != nil {
+		if errPing := db.Ping(); errPing != nil {
+			logger.Log.Error(errPing.Error())
 			res.WriteHeader(http.StatusInternalServerError)
-			return
 		}
 
 		defer db.Close()
