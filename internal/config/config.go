@@ -19,8 +19,12 @@ func New() *Config {
 	flag.StringVar(&config.Address, "a", "localhost:8080", "server url")
 	flag.StringVar(&config.URL, "b", "http://localhost:8080", "last url")
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
-	flag.StringVar(&config.MemoryFile, "f", "memory.log", "path storage file")
-	flag.StringVar(&config.DatabaseDSN, "d", "host=localhost user=videos password=userpassword dbname=videos sslmode=disable", "Database DSN")
+
+	// flag.StringVar(&config.MemoryFile, "f", "memory.log", "path storage file")
+	flag.StringVar(&config.MemoryFile, "f", "", "path storage file")
+
+	// flag.StringVar(&config.DatabaseDSN, "d", "host=localhost user=videos password=userpassword dbname=videos sslmode=disable", "Database DSN")
+	flag.StringVar(&config.DatabaseDSN, "d", "", "Database DSN")
 
 	flag.Parse()
 

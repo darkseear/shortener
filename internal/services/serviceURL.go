@@ -29,13 +29,15 @@ func (s *LocalMemory) ShortenURL(longURL string, fileName string) string {
 	s.localMemory.Memory[shortURL] = longURL
 	logger.Log.Info("Add in storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
 
-	p, err := NewProducer(fileName)
-	if err != nil {
-		panic(err)
+	if fileName != "" {
+		p, err := NewProducer(fileName)
+		if err != nil {
+			panic(err)
+		}
+		m := models.MemoryFile{ShortURL: shortURL, LongURL: longURL}
+		p.WriteMemoryFile(&m)
+		defer p.Close()
 	}
-	m := models.MemoryFile{ShortURL: shortURL, LongURL: longURL}
-	p.WriteMemoryFile(&m)
-	defer p.Close()
 
 	return shortURL
 }

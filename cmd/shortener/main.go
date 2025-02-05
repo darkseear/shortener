@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"path/filepath"
 
@@ -33,16 +34,22 @@ func run() error {
 	}
 
 	m := services.NewMemory()
-	err := services.MemoryFileSave(fileName, m)
-	if err != nil {
-		return err
+	if DDB == "" && fileName != "" {
+		fmt.Println("proverka_database:" + DDB)
+		fmt.Println("proverka_filename:" + fileName)
+		err := services.MemoryFileSave(fileName, m)
+		if err != nil {
+			return err
+		}
+		absPath, err := filepath.Abs(fileName)
+		if err != nil {
+			return err
+		}
+
+		config.MemoryFile = absPath
+		fileName = config.MemoryFile
 	}
-	absPath, err := filepath.Abs(fileName)
-	if err != nil {
-		return err
-	}
-	config.MemoryFile = absPath
-	fileName = config.MemoryFile
+
 	//router chi
 	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config.URL, m, fileName, DDB).Handle)))
 
