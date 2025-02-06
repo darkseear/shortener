@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"path/filepath"
 
@@ -42,6 +43,7 @@ func run() error {
 		logger.Log.Error("Error store created")
 		return err
 	}
+	store.CreateTableDB(context.Background())
 
 	// if DDB == "" && fileName != "" {
 

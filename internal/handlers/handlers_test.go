@@ -44,7 +44,7 @@ func TestGetURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := Routers(config, store)
-			minURL := store.ShortenURL(tt.url, tt.testFile)
+			minURL := store.ShortenURL(tt.url, config)
 			request := httptest.NewRequest(http.MethodGet, tt.request+minURL, nil)
 			w := httptest.NewRecorder()
 			h := logger.WhithLogging(GetURL(*r))
