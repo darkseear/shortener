@@ -4,34 +4,30 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
+	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/models"
-	"github.com/darkseear/shortener/internal/storage"
+	"github.com/darkseear/shortener/internal/services"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Router struct {
-	Handle   *chi.Mux
-	URL      string
-	Memory   storage.URLService
-	FileName string
-	DDB      string
+	Handle *chi.Mux
+	Store  *services.Store
+	Cfg    *config.Config
 }
 
-func Routers(url string, m storage.URLService, fileName string, DDB string) *Router {
+func Routers(cfg *config.Config, store *services.Store) *Router {
 
 	r := Router{
-		Handle:   chi.NewRouter(),
-		URL:      url,
-		Memory:   m,
-		FileName: fileName,
-		DDB:      DDB,
+		Handle: chi.NewRouter(),
+		Store:  store,
+		Cfg:    cfg,
 	}
 
 	// logging := logger.WhithLogging
@@ -61,7 +57,7 @@ func GetURL(r Router) http.HandlerFunc {
 			return
 		}
 
-		count, err := r.Memory.GetOriginalURL(paramURLID)
+		count, err := r.Store.GetOriginalURL(paramURLID)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
 			return
@@ -95,7 +91,7 @@ func AddURL(r Router) http.HandlerFunc {
 
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
-		res.Write([]byte(r.URL + "/" + r.Memory.ShortenURL(strURL, r.FileName)))
+		res.Write([]byte(r.Cfg.URL + "/" + r.Store.ShortenURL(strURL, r.Cfg.MemoryFile)))
 	}
 }
 
@@ -129,9 +125,9 @@ func Shorten(r Router) http.HandlerFunc {
 			return
 		}
 
-		shortenURL := r.Memory.ShortenURL(longURL, r.FileName)
+		shortenURL := r.Store.ShortenURL(longURL, r.Cfg.MemoryFile)
 
-		shortenJSON.Result = r.URL + "/" + shortenURL
+		shortenJSON.Result = r.Cfg.URL + "/" + shortenURL
 		resp, err := json.Marshal(shortenJSON)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
@@ -150,9 +146,7 @@ func Shorten(r Router) http.HandlerFunc {
 func PingDB(r Router) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 
-		fmt.Println(r.DDB)
-
-		db, errSQL := sql.Open("pgx", r.DDB)
+		db, errSQL := sql.Open("pgx", r.Cfg.DatabaseDSN)
 		if errSQL != nil {
 			logger.Log.Error(errSQL.Error())
 			res.WriteHeader(http.StatusInternalServerError)

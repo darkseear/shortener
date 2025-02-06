@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/services"
 
@@ -15,6 +16,11 @@ import (
 )
 
 func TestGetURL(t *testing.T) {
+	config := config.New()
+	store, err := services.NewStore(config)
+	if err != nil {
+		logger.Log.Error("Error created store")
+	}
 
 	tests := []struct {
 		name     string
@@ -37,9 +43,8 @@ func TestGetURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := services.NewMemory()
-			r := Routers(tt.defURL, m, tt.testFile, tt.bdInfo)
-			minURL := m.ShortenURL(tt.url, tt.testFile)
+			r := Routers(config, store)
+			minURL := store.ShortenURL(tt.url, tt.testFile)
 			request := httptest.NewRequest(http.MethodGet, tt.request+minURL, nil)
 			w := httptest.NewRecorder()
 			h := logger.WhithLogging(GetURL(*r))
@@ -60,6 +65,11 @@ func TestGetURL(t *testing.T) {
 }
 
 func TestAddURL(t *testing.T) {
+	config := config.New()
+	store, err := services.NewStore(config)
+	if err != nil {
+		logger.Log.Error("Error created store")
+	}
 	type want struct {
 		contentType string
 		statusCode  int
@@ -90,8 +100,7 @@ func TestAddURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.urlPlain))
 
-			m := services.NewMemory()
-			r := Routers(tt.defURL, m, tt.testFile, tt.bdInfo)
+			r := Routers(config, store)
 			w := httptest.NewRecorder()
 			h := logger.WhithLogging(AddURL(*r))
 

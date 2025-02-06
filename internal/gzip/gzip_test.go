@@ -10,17 +10,19 @@ import (
 
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/handlers"
+	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/services"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGzipCompression(t *testing.T) {
 
-	m := services.NewMemory()
 	config := config.New()
-	fileName := config.MemoryFile
-	bdInfo := config.DatabaseDSN
-	rw := handlers.Routers("http://localhost:8080", m, fileName, bdInfo)
+	store, err := services.NewStore(config)
+	if err != nil {
+		logger.Log.Error("Error created")
+	}
+	rw := handlers.Routers(config, store)
 	handler := http.HandlerFunc(GzipMiddleware(handlers.Shorten(*rw)))
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
