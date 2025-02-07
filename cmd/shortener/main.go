@@ -29,6 +29,12 @@ func run() error {
 		return err
 	}
 
+	store, err := services.NewStore(config)
+	if err != nil {
+		logger.Log.Error("Error store created")
+		return err
+	}
+
 	if config.MemoryFile != "" {
 		absPath, err := filepath.Abs(config.MemoryFile)
 		if err != nil {
@@ -38,27 +44,9 @@ func run() error {
 		config.MemoryFile = absPath
 	}
 
-	store, err := services.NewStore(config)
-	if err != nil {
-		logger.Log.Error("Error store created")
-		return err
+	if config.DatabaseDSN != "" {
+		store.CreateTableDB(context.Background())
 	}
-	store.CreateTableDB(context.Background())
-
-	// if DDB == "" && fileName != "" {
-
-	// 	absPath, err := filepath.Abs(fileName)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	config.MemoryFile = absPath
-	// 	fileName = config.MemoryFile
-	// 	err = services.MemoryFileSave(fileName, m)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
 
 	//router chi
 	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config, store).Handle)))
