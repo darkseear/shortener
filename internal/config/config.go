@@ -21,10 +21,10 @@ func New() *Config {
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 
 	// flag.StringVar(&config.MemoryFile, "f", "memory.log", "path storage file")
-	flag.StringVar(&config.MemoryFile, "f", "", "path storage file")
+	flag.StringVar(&config.MemoryFile, "f", "memory.log", "path storage file")
 
-	// flag.StringVar(&config.DatabaseDSN, "d", "host=localhost user=videos password=userpassword dbname=videos sslmode=disable", "Database DSN")
-	flag.StringVar(&config.DatabaseDSN, "d", "", "Database DSN")
+	// flag.StringVar(&config.DatabaseDSN, "d", "host=localhost user=postgres password=1234567890 dbname=shorten sslmode=disable", "Database DSN")
+	flag.StringVar(&config.DatabaseDSN, "d", "host=localhost user=postgres password=1234567890 dbname=shorten sslmode=disable", "Database DSN")
 
 	flag.Parse()
 

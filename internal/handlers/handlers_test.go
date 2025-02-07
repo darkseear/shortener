@@ -23,22 +23,16 @@ func TestGetURL(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		url      string
-		want     int
-		request  string
-		defURL   string
-		testFile string
-		bdInfo   string
+		name    string
+		url     string
+		want    int
+		request string
 	}{
 		{
-			name:     "test#1",
-			url:      "https://www.yandex.ru",
-			want:     307,
-			request:  "/",
-			testFile: "memory.log",
-			bdInfo:   "host=localhost user=videos password=userpassword dbname=videos sslmode=disable",
-			defURL:   "http://localhost:8080",
+			name:    "test#1",
+			url:     "https://www.yandex.ru",
+			want:    307,
+			request: "/",
 		},
 	}
 	for _, tt := range tests {
@@ -79,21 +73,15 @@ func TestAddURL(t *testing.T) {
 		urlPlain string
 		request  string
 		want     want
-		defURL   string
-		testFile string
-		bdInfo   string
 	}{
 		{
 			name:     "addurl_test#1",
 			urlPlain: "https://www.yandex.ru",
-			testFile: "memory.log",
-			bdInfo:   "host=localhost user=videos password=userpassword dbname=videos sslmode=disable",
 			want: want{
 				contentType: "text/plain",
 				statusCode:  201,
 			},
 			request: "/",
-			defURL:  "http://localhost:8080",
 		},
 	}
 	for _, tt := range tests {
