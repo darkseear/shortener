@@ -39,7 +39,7 @@ func NewStore(config *config.Config) (*Store, error) {
 			return nil, err
 		}
 		return &Store{lDB: &storage.DBStorage{
-			Db: db,
+			DB: db,
 		}}, nil
 	} else if config.MemoryFile != "" {
 		logger.Log.Info("Create storage MemoryFile")
@@ -60,7 +60,7 @@ func NewDB(strDB string) (*LocalDB, error) {
 		return nil, err
 	}
 	return &LocalDB{&storage.DBStorage{
-		Db: db,
+		DB: db,
 	}}, nil
 }
 
@@ -78,7 +78,7 @@ func (s *Store) ShortenURL(longURL string, cfg *config.Config) string {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		r, err := s.lDB.Db.ExecContext(ctx, "INSERT INTO urls (long, shorten) SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM urls WHERE shorten = $3)", longURL, shortURL, shortURL)
+		r, err := s.lDB.DB.ExecContext(ctx, "INSERT INTO urls (long, shorten) SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM urls WHERE shorten = $3)", longURL, shortURL, shortURL)
 		if err != nil {
 			logger.Log.Error("Not create write in table")
 		}
@@ -110,7 +110,7 @@ func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config) (string, err
 
 		var URL string
 
-		row := s.lDB.Db.QueryRowContext(ctx, "SELECT long FROM urls WHERE shorten = $1", shortURL)
+		row := s.lDB.DB.QueryRowContext(ctx, "SELECT long FROM urls WHERE shorten = $1", shortURL)
 		err := row.Scan(&URL)
 		if err != nil {
 			logger.Log.Error("GetURL scan error")
@@ -151,7 +151,7 @@ func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config) (string, err
 
 func (s *Store) CreateTableDB(ctx context.Context) error {
 	logger.Log.Info("Create table shorten")
-	result, err := s.lDB.Db.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS urls ("+
+	result, err := s.lDB.DB.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS urls ("+
 		"id SERIAL PRIMARY KEY,"+
 		"long VARCHAR(255) NOT NULL,"+
 		"shorten VARCHAR(50) NOT NULL UNIQUE)")

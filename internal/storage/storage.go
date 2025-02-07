@@ -10,7 +10,7 @@ type FileStore struct {
 	File string
 }
 type DBStorage struct {
-	Db *sql.DB
+	DB *sql.DB
 }
 
 type URLService interface {
