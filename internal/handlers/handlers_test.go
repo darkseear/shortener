@@ -16,8 +16,23 @@ import (
 )
 
 func TestGetURL(t *testing.T) {
-	config := config.New()
-	store, err := services.NewStore(config)
+
+	type testConfig struct {
+		config *config.Config
+	}
+
+	lc := testConfig{
+		config: &config.Config{
+			Address:     "localhost:8080",
+			URL:         "http://localhost:8080",
+			LogLevel:    "info",
+			MemoryFile:  "memory.log",
+			DatabaseDSN: "",
+		},
+	}
+
+	// config := config.New()
+	store, err := services.NewStore(lc.config)
 	if err != nil {
 		logger.Log.Error("Error created store")
 	}
@@ -37,8 +52,8 @@ func TestGetURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := Routers(config, store)
-			minURL := store.ShortenURL(tt.url, config)
+			r := Routers(lc.config, store)
+			minURL := store.ShortenURL(tt.url, lc.config)
 			request := httptest.NewRequest(http.MethodGet, tt.request+minURL, nil)
 			w := httptest.NewRecorder()
 			h := logger.WhithLogging(GetURL(*r))
@@ -59,8 +74,21 @@ func TestGetURL(t *testing.T) {
 }
 
 func TestAddURL(t *testing.T) {
-	config := config.New()
-	store, err := services.NewStore(config)
+	type testConfig struct {
+		config *config.Config
+	}
+
+	lc := testConfig{
+		config: &config.Config{
+			Address:     "localhost:8080",
+			URL:         "http://localhost:8080",
+			LogLevel:    "info",
+			MemoryFile:  "memory.log",
+			DatabaseDSN: "",
+		},
+	}
+	// config := config.New()
+	store, err := services.NewStore(lc.config)
 	if err != nil {
 		logger.Log.Error("Error created store")
 	}
@@ -88,7 +116,7 @@ func TestAddURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.urlPlain))
 
-			r := Routers(config, store)
+			r := Routers(lc.config, store)
 			w := httptest.NewRecorder()
 			h := logger.WhithLogging(AddURL(*r))
 
