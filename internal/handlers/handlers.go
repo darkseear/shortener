@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -35,6 +36,7 @@ func Routers(cfg *config.Config, store *services.Store) *Router {
 	r.Handle.Post("/", AddURL(r))
 	r.Handle.Get("/{id}", GetURL(r))
 	r.Handle.Post("/api/shorten", Shorten(r))
+	r.Handle.Post("/api/shorten/batch", ShortenBatch(r))
 	r.Handle.Get("/ping", PingDB(r))
 
 	return &r
@@ -42,12 +44,6 @@ func Routers(cfg *config.Config, store *services.Store) *Router {
 
 func GetURL(r Router) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodGet {
-			//StatusBadRequest  400
-			res.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
 		path := strings.TrimSuffix(strings.TrimPrefix(req.URL.Path, "/"), "/")
 		parts := strings.Split(path, "/")
 		paramURLID := parts[0]
@@ -70,11 +66,6 @@ func GetURL(r Router) http.HandlerFunc {
 
 func AddURL(r Router) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodPost {
-			res.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
@@ -97,11 +88,6 @@ func AddURL(r Router) http.HandlerFunc {
 
 func Shorten(r Router) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodPost {
-			res.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
 		var buf bytes.Buffer
 		var shortenJSON models.ShortenJSON
 		var longJSON models.LongJSON
@@ -140,6 +126,47 @@ func Shorten(r Router) http.HandlerFunc {
 		res.WriteHeader(http.StatusCreated)
 		// json
 		res.Write(resp)
+	}
+}
+
+func ShortenBatch(r Router) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		// var buf bytes.Buffer
+		var BatchShortenJSON []models.BatchShortenJSON
+		var BatchLongJSON []models.BatchLongJSON
+
+		dec := json.NewDecoder(req.Body)
+		if err := dec.Decode(&BatchLongJSON); err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		batchLongJSON := BatchLongJSON
+		fmt.Println(batchLongJSON)
+
+		for key := range batchLongJSON {
+			cID := batchLongJSON[key].CorrelationID
+			lJSON := batchLongJSON[key].LongJSON
+			fmt.Println(cID)
+			fmt.Println(lJSON)
+			shortenURL := r.Store.ShortenURL(lJSON, r.Cfg)
+			BatchShortenJSON = append(BatchShortenJSON, models.BatchShortenJSON{CorrelationID: cID, ShortJSON: r.Cfg.URL + "/" + shortenURL})
+		}
+
+		fmt.Println(BatchShortenJSON)
+
+		enc := json.NewEncoder(res)
+
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(http.StatusCreated)
+		logger.Log.Info("Status 201")
+
+		if err := enc.Encode(BatchShortenJSON); err != nil {
+			logger.Log.Debug("error encoding batchShortenJson")
+			res.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		defer req.Body.Close()
 	}
 }
 
