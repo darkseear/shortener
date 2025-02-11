@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/darkseear/shortener/internal/config"
@@ -71,20 +72,44 @@ func NewMemory() *LocalMemory {
 	}}
 }
 
-func (s *Store) ShortenURL(longURL string, cfg *config.Config) string {
+func (s *Store) ShortenURL(longURL string, cfg *config.Config) (string, int) {
 	shortURL := GenerateShortURL(sizeURL)
 
 	if cfg.DatabaseDSN != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		r, err := s.lDB.DB.ExecContext(ctx, "INSERT INTO urls (long, shorten) SELECT $1, $2 WHERE NOT EXISTS (SELECT 1 FROM urls WHERE shorten = $3)", longURL, shortURL, shortURL)
+		r, err := s.lDB.DB.ExecContext(ctx, "INSERT INTO urls (long, shorten) VALUES ($1, $2) ON CONFLICT (long) DO NOTHING RETURNING *;", longURL, shortURL)
 		if err != nil {
+			fmt.Println(err.Error())
 			logger.Log.Error("Not create write in table")
 		}
-		logger.Log.Info("Add in db storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
-		fmt.Println(r)
-		return shortURL
+		in, err := r.RowsAffected()
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		if in == 0 {
+			logger.Log.Error("Conflict long")
+			s := s.lDB.DB.QueryRowContext(ctx, "SELECT shorten FROM urls WHERE long = $1", longURL)
+			fmt.Println(s)
+			var short string
+			err = s.Scan(&short)
+			if err != nil {
+				logger.Log.Error("scan error")
+				return "", http.StatusBadRequest
+			}
+			err = s.Err()
+			if err != nil {
+				logger.Log.Error("error")
+				return "", http.StatusBadRequest
+			}
+			logger.Log.Info("In db storage", zap.String("shortURL", short), zap.String("longURL", longURL))
+			return short, http.StatusConflict
+		} else {
+			logger.Log.Info("Add in db storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
+			return shortURL, http.StatusCreated
+		}
+
 	} else if cfg.MemoryFile != "" {
 		p, err := NewProducer(cfg.MemoryFile)
 		if err != nil {
@@ -94,11 +119,11 @@ func (s *Store) ShortenURL(longURL string, cfg *config.Config) string {
 		p.WriteMemoryFile(&m)
 		logger.Log.Info("Add in file storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
 		defer p.Close()
-		return shortURL
+		return shortURL, http.StatusCreated
 	} else {
 		s.lm.Memory[shortURL] = longURL
 		logger.Log.Info("Add in memory storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
-		return shortURL
+		return shortURL, http.StatusCreated
 	}
 }
 
@@ -153,7 +178,7 @@ func (s *Store) CreateTableDB(ctx context.Context) error {
 	logger.Log.Info("Create table shorten")
 	result, err := s.lDB.DB.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS urls ("+
 		"id SERIAL PRIMARY KEY,"+
-		"long VARCHAR(255) NOT NULL,"+
+		"long VARCHAR(255) NOT NULL UNIQUE,"+
 		"shorten VARCHAR(50) NOT NULL UNIQUE)")
 	if err != nil {
 		logger.Log.Error("Error created table")

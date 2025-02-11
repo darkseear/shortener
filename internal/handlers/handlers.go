@@ -81,8 +81,9 @@ func AddURL(r Router) http.HandlerFunc {
 		}
 
 		res.Header().Set("Content-Type", "text/plain")
-		res.WriteHeader(http.StatusCreated)
-		res.Write([]byte(r.Cfg.URL + "/" + r.Store.ShortenURL(strURL, r.Cfg)))
+		short, status := r.Store.ShortenURL(strURL, r.Cfg)
+		res.WriteHeader(status)
+		res.Write([]byte(r.Cfg.URL + "/" + short))
 	}
 }
 
@@ -111,7 +112,7 @@ func Shorten(r Router) http.HandlerFunc {
 			return
 		}
 
-		shortenURL := r.Store.ShortenURL(longURL, r.Cfg)
+		shortenURL, status := r.Store.ShortenURL(longURL, r.Cfg)
 
 		shortenJSON.Result = r.Cfg.URL + "/" + shortenURL
 		resp, err := json.Marshal(shortenJSON)
@@ -123,7 +124,7 @@ func Shorten(r Router) http.HandlerFunc {
 		defer req.Body.Close()
 
 		res.Header().Set("Content-Type", "application/json")
-		res.WriteHeader(http.StatusCreated)
+		res.WriteHeader(status)
 		// json
 		res.Write(resp)
 	}
@@ -149,7 +150,7 @@ func ShortenBatch(r Router) http.HandlerFunc {
 			lJSON := batchLongJSON[key].LongJSON
 			fmt.Println(cID)
 			fmt.Println(lJSON)
-			shortenURL := r.Store.ShortenURL(lJSON, r.Cfg)
+			shortenURL, _ := r.Store.ShortenURL(lJSON, r.Cfg)
 			BatchShortenJSON = append(BatchShortenJSON, models.BatchShortenJSON{CorrelationID: cID, ShortJSON: r.Cfg.URL + "/" + shortenURL})
 		}
 
