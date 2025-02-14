@@ -37,6 +37,7 @@ func NewStore(config *config.Config) (*Store, error) {
 		logger.Log.Info("Create storage DB")
 		db, err := sql.Open("pgx", config.DatabaseDSN)
 		if err != nil {
+			logger.Log.Error("Error create storage DB", zap.Error(err))
 			return nil, err
 		}
 		return &Store{lDB: &storage.DBStorage{
@@ -58,6 +59,7 @@ func NewStore(config *config.Config) (*Store, error) {
 func NewDB(strDB string) (*LocalDB, error) {
 	db, err := sql.Open("pgx", strDB)
 	if err != nil {
+		logger.Log.Info("Error create DB", zap.Error(err))
 		return nil, err
 	}
 	return &LocalDB{&storage.DBStorage{
@@ -81,12 +83,11 @@ func (s *Store) ShortenURL(longURL string, cfg *config.Config) (string, int) {
 
 		r, err := s.lDB.DB.ExecContext(ctx, "INSERT INTO urls (long, shorten) VALUES ($1, $2) ON CONFLICT (long) DO NOTHING RETURNING *;", longURL, shortURL)
 		if err != nil {
-			fmt.Println(err.Error())
-			logger.Log.Error("Not create write in table")
+			logger.Log.Error("Not create write in table", zap.Error(err))
 		}
 		in, err := r.RowsAffected()
 		if err != nil {
-			fmt.Println(err.Error())
+			logger.Log.Error("Rows affected error", zap.Error(err))
 		}
 		if in == 0 {
 			logger.Log.Error("Conflict long")
@@ -95,12 +96,12 @@ func (s *Store) ShortenURL(longURL string, cfg *config.Config) (string, int) {
 			var short string
 			err = s.Scan(&short)
 			if err != nil {
-				logger.Log.Error("scan error")
+				logger.Log.Error("scan error", zap.Error(err))
 				return "", http.StatusBadRequest
 			}
 			err = s.Err()
 			if err != nil {
-				logger.Log.Error("error")
+				logger.Log.Error("db error", zap.Error(err))
 				return "", http.StatusBadRequest
 			}
 			logger.Log.Info("In db storage", zap.String("shortURL", short), zap.String("longURL", longURL))
@@ -113,6 +114,7 @@ func (s *Store) ShortenURL(longURL string, cfg *config.Config) (string, int) {
 	} else if cfg.MemoryFile != "" {
 		p, err := NewProducer(cfg.MemoryFile)
 		if err != nil {
+			logger.Log.Error("producer error", zap.Error(err))
 			panic(err)
 		}
 		m := models.MemoryFile{ShortURL: shortURL, LongURL: longURL}
@@ -138,12 +140,12 @@ func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config) (string, err
 		row := s.lDB.DB.QueryRowContext(ctx, "SELECT long FROM urls WHERE shorten = $1", shortURL)
 		err := row.Scan(&URL)
 		if err != nil {
-			logger.Log.Error("GetURL scan error")
+			logger.Log.Error("GetURL scan error", zap.Error(err))
 			return "", err
 		}
 		err = row.Err()
 		if err != nil {
-			logger.Log.Error("GetURL error")
+			logger.Log.Error("GetURL error", zap.Error(err))
 			return "", err
 		}
 
@@ -156,6 +158,7 @@ func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config) (string, err
 		}
 		list, err := c.ReadMemoryFileAll()
 		if err != nil {
+			logger.Log.Error("read memory file error", zap.Error(err))
 			panic(err)
 		}
 		count, ok := list[shortURL]
@@ -181,7 +184,7 @@ func (s *Store) CreateTableDB(ctx context.Context) error {
 		"long VARCHAR(255) NOT NULL UNIQUE,"+
 		"shorten VARCHAR(50) NOT NULL UNIQUE)")
 	if err != nil {
-		logger.Log.Error("Error created table")
+		logger.Log.Error("Error created table", zap.Error(err))
 		return err
 	}
 	fmt.Println(result)
@@ -193,6 +196,7 @@ func GenerateShortURL(i int64) string {
 	b := make([]byte, i)
 	_, err := rand.Read(b)
 	if err != nil {
+		logger.Log.Error("Error created table", zap.Error(err))
 		panic(err)
 	}
 	shortURL := base64.URLEncoding.EncodeToString(b)
