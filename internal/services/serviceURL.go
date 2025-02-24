@@ -82,7 +82,10 @@ func (s *Store) ShortenURL(longURL string, cfg *config.Config) (string, int) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		r, err := s.lDB.DB.ExecContext(ctx, "INSERT INTO urls (long, shorten) VALUES ($1, $2) ON CONFLICT (long) DO NOTHING RETURNING *;", longURL, shortURL)
+		query := "INSERT INTO urls (long, shorten) VALUES ($1, $2) ON CONFLICT (long) DO NOTHING RETURNING *;"
+
+		r, err := s.lDB.DB.ExecContext(ctx, query, longURL, shortURL)
+
 		if err != nil {
 			logger.Log.Error("Not create write in table", zap.Error(err))
 		}
@@ -92,7 +95,8 @@ func (s *Store) ShortenURL(longURL string, cfg *config.Config) (string, int) {
 		}
 		if in == 0 {
 			logger.Log.Error("Conflict long")
-			s := s.lDB.DB.QueryRowContext(ctx, "SELECT shorten FROM urls WHERE long = $1", longURL)
+			query := "SELECT shorten FROM urls WHERE long = $1"
+			s := s.lDB.DB.QueryRowContext(ctx, query, longURL)
 			fmt.Println(s)
 			var short string
 			err = s.Scan(&short)
@@ -137,8 +141,8 @@ func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config) (string, err
 		defer cancel()
 
 		var URL string
-
-		row := s.lDB.DB.QueryRowContext(ctx, "SELECT long FROM urls WHERE shorten = $1", shortURL)
+		query := "SELECT long FROM urls WHERE shorten = $1"
+		row := s.lDB.DB.QueryRowContext(ctx, query, shortURL)
 		err := row.Scan(&URL)
 		if err != nil {
 			logger.Log.Error("GetURL scan error", zap.Error(err))
@@ -180,10 +184,11 @@ func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config) (string, err
 
 func (s *Store) CreateTableDB(ctx context.Context) error {
 	logger.Log.Info("Create table shorten")
-	result, err := s.lDB.DB.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS urls ("+
-		"id SERIAL PRIMARY KEY,"+
-		"long VARCHAR(255) NOT NULL UNIQUE,"+
-		"shorten VARCHAR(50) NOT NULL UNIQUE)")
+	query := "CREATE TABLE IF NOT EXISTS urls (" +
+		"id SERIAL PRIMARY KEY," +
+		"long VARCHAR(255) NOT NULL UNIQUE," +
+		"shorten VARCHAR(50) NOT NULL UNIQUE)"
+	result, err := s.lDB.DB.ExecContext(ctx, query)
 	if err != nil {
 		logger.Log.Error("Error created table", zap.Error(err))
 		return err
