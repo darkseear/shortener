@@ -22,8 +22,8 @@ func TestGzipCompression(t *testing.T) {
 	if err != nil {
 		logger.Log.Error("Error created")
 	}
-	rw := handlers.Routers(config, store)
-	handler := http.HandlerFunc(GzipMiddleware(handlers.Shorten(*rw)))
+	rw := *handlers.Routers(config, store)
+	handler := http.HandlerFunc(GzipMiddleware(rw.Shorten()))
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 

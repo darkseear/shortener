@@ -1,10 +1,8 @@
 package handlers
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -33,16 +31,37 @@ func Routers(cfg *config.Config, store *services.Store) *Router {
 
 	// logging := logger.WhithLogging
 
-	r.Handle.Post("/", AddURL(r))
-	r.Handle.Get("/{id}", GetURL(r))
-	r.Handle.Post("/api/shorten", Shorten(r))
-	r.Handle.Post("/api/shorten/batch", ShortenBatch(r))
-	r.Handle.Get("/ping", PingDB(r))
+	r.Handle.Post("/", r.AddURL())
+	r.Handle.Get("/{id}", r.GetURL())
+	r.Handle.Post("/api/shorten", r.Shorten())
+	r.Handle.Post("/api/shorten/batch", r.ShortenBatch())
+	r.Handle.Get("/ping", r.PingDB())
 
 	return &r
 }
 
-func GetURL(r Router) http.HandlerFunc {
+type Handlers interface {
+	GetUrl() http.HandlerFunc
+	AddURL() http.HandlerFunc
+	Shorten() http.HandlerFunc
+	ShortenBatch() http.HandlerFunc
+	PingDB() http.HandlerFunc
+}
+
+func readJSON(req *http.Request, v interface{}) error {
+	dec := json.NewDecoder(req.Body)
+	defer req.Body.Close()
+	return dec.Decode(v)
+}
+
+func writeJSON(res http.ResponseWriter, status int, v interface{}) error {
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(status)
+	enc := json.NewEncoder(res)
+	return enc.Encode(v)
+}
+
+func (r *Router) GetURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		path := strings.TrimSuffix(strings.TrimPrefix(req.URL.Path, "/"), "/")
 		parts := strings.Split(path, "/")
@@ -64,7 +83,7 @@ func GetURL(r Router) http.HandlerFunc {
 	}
 }
 
-func AddURL(r Router) http.HandlerFunc {
+func (r *Router) AddURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
@@ -87,91 +106,53 @@ func AddURL(r Router) http.HandlerFunc {
 	}
 }
 
-func Shorten(r Router) http.HandlerFunc {
+func (r *Router) Shorten() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		var buf bytes.Buffer
-		var shortenJSON models.ShortenJSON
 		var longJSON models.LongJSON
-		//read body request
-		_, err := buf.ReadFrom(req.Body)
-		if err != nil {
-			http.Error(res, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		//deserial JSON
-		if err = json.Unmarshal(buf.Bytes(), &longJSON); err != nil {
+		if err := readJSON(req, &longJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		longURL := longJSON.URL
-
 		if longURL == "" {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		shortenURL, status := r.Store.ShortenURL(longURL, r.Cfg)
+		shortenJSON := models.ShortenJSON{Result: r.Cfg.URL + "/" + shortenURL}
 
-		shortenJSON.Result = r.Cfg.URL + "/" + shortenURL
-		resp, err := json.Marshal(shortenJSON)
-		if err != nil {
+		if err := writeJSON(res, status, shortenJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
-			return
 		}
-
-		defer req.Body.Close()
-
-		res.Header().Set("Content-Type", "application/json")
-		res.WriteHeader(status)
-		// json
-		res.Write(resp)
 	}
 }
 
-func ShortenBatch(r Router) http.HandlerFunc {
+func (r *Router) ShortenBatch() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		// var buf bytes.Buffer
-		var BatchShortenJSON []models.BatchShortenJSON
-		var BatchLongJSON []models.BatchLongJSON
-
-		dec := json.NewDecoder(req.Body)
-		if err := dec.Decode(&BatchLongJSON); err != nil {
+		var batchLongJSON []models.BatchLongJSON
+		if err := readJSON(req, &batchLongJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		batchLongJSON := BatchLongJSON
-		fmt.Println(batchLongJSON)
-
-		for key := range batchLongJSON {
-			cID := batchLongJSON[key].CorrelationID
-			lJSON := batchLongJSON[key].LongJSON
-			fmt.Println(cID)
-			fmt.Println(lJSON)
-			shortenURL, _ := r.Store.ShortenURL(lJSON, r.Cfg)
-			BatchShortenJSON = append(BatchShortenJSON, models.BatchShortenJSON{CorrelationID: cID, ShortJSON: r.Cfg.URL + "/" + shortenURL})
+		var batchShortenJSON []models.BatchShortenJSON
+		for _, item := range batchLongJSON {
+			shortenURL, _ := r.Store.ShortenURL(item.LongJSON, r.Cfg)
+			batchShortenJSON = append(batchShortenJSON, models.BatchShortenJSON{
+				CorrelationID: item.CorrelationID,
+				ShortJSON:     r.Cfg.URL + "/" + shortenURL,
+			})
 		}
 
-		fmt.Println(BatchShortenJSON)
-
-		enc := json.NewEncoder(res)
-
-		res.Header().Set("Content-Type", "application/json")
-		res.WriteHeader(http.StatusCreated)
-		logger.Log.Info("Status 201")
-
-		if err := enc.Encode(BatchShortenJSON); err != nil {
-			logger.Log.Debug("error encoding batchShortenJson")
-			res.WriteHeader(http.StatusBadRequest)
-			return
+		if err := writeJSON(res, http.StatusCreated, batchShortenJSON); err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
 		}
-		defer req.Body.Close()
 	}
 }
 
-func PingDB(r Router) http.HandlerFunc {
+func (r *Router) PingDB() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 
 		db, errSQL := sql.Open("pgx", r.Cfg.DatabaseDSN)
