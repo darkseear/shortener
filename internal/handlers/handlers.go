@@ -29,8 +29,6 @@ func Routers(cfg *config.Config, store *services.Store) *Router {
 		Cfg:    cfg,
 	}
 
-	// logging := logger.WhithLogging
-
 	r.Handle.Post("/", r.AddURL())
 	r.Handle.Get("/{id}", r.GetURL())
 	r.Handle.Post("/api/shorten", r.Shorten())

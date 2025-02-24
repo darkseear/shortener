@@ -28,8 +28,9 @@ type LocalDB struct {
 }
 
 type Store struct {
-	lm  *storage.MemoryStorage
-	lDB *storage.DBStorage
+	lm    *storage.MemoryStorage
+	lDB   *storage.DBStorage
+	lFile *storage.FileStore
 }
 
 func NewStore(config *config.Config) (*Store, error) {
@@ -45,8 +46,8 @@ func NewStore(config *config.Config) (*Store, error) {
 		}}, nil
 	} else if config.MemoryFile != "" {
 		logger.Log.Info("Create storage MemoryFile")
-		return &Store{lm: &storage.MemoryStorage{
-			Memory: make(map[string]string),
+		return &Store{lFile: &storage.FileStore{
+			File: config.MemoryFile,
 		}}, nil
 	} else {
 		logger.Log.Info("Create storage Memory")
