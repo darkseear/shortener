@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/services"
 
@@ -16,33 +18,47 @@ import (
 
 func TestGetURL(t *testing.T) {
 
+	type testConfig struct {
+		config *config.Config
+	}
+
+	lc := testConfig{
+		config: &config.Config{
+			Address:     "localhost:8080",
+			URL:         "http://localhost:8080",
+			LogLevel:    "info",
+			MemoryFile:  "memory.log",
+			DatabaseDSN: "",
+		},
+	}
+
+	// config := config.New()
+	store, err := services.NewStore(lc.config)
+	if err != nil {
+		logger.Log.Error("Error created store")
+	}
+
 	tests := []struct {
-		name     string
-		url      string
-		want     int
-		request  string
-		defURL   string
-		testFile string
+		name    string
+		url     string
+		want    int
+		request string
 	}{
 		{
-			name:     "test#1",
-			url:      "https://www.yandex.ru",
-			want:     307,
-			request:  "/",
-			testFile: "memory.log",
-			defURL:   "http://localhost:8080",
+			name:    "test#1",
+			url:     "https://www.yandex.ru",
+			want:    307,
+			request: "/",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// minURL := storage.RandStringBytes(8)
-			// stor := storage.NewStorageServise().Storage
-			m := services.NewMemory()
-			r := Routers(tt.defURL, m, tt.testFile)
-			minURL := m.ShortenURL(tt.url, tt.testFile)
+			r := *Routers(lc.config, store)
+			minURL, status := store.ShortenURL(tt.url, lc.config)
+			fmt.Println(status)
 			request := httptest.NewRequest(http.MethodGet, tt.request+minURL, nil)
 			w := httptest.NewRecorder()
-			h := logger.WhithLogging(GetURL(*r))
+			h := logger.WhithLogging(r.GetURL())
 
 			h(w, request)
 			result := w.Result()
@@ -60,6 +76,24 @@ func TestGetURL(t *testing.T) {
 }
 
 func TestAddURL(t *testing.T) {
+	type testConfig struct {
+		config *config.Config
+	}
+
+	lc := testConfig{
+		config: &config.Config{
+			Address:     "localhost:8080",
+			URL:         "http://localhost:8080",
+			LogLevel:    "info",
+			MemoryFile:  "memory.log",
+			DatabaseDSN: "",
+		},
+	}
+	// config := config.New()
+	store, err := services.NewStore(lc.config)
+	if err != nil {
+		logger.Log.Error("Error created store")
+	}
 	type want struct {
 		contentType string
 		statusCode  int
@@ -69,29 +103,24 @@ func TestAddURL(t *testing.T) {
 		urlPlain string
 		request  string
 		want     want
-		defURL   string
-		testFile string
 	}{
 		{
 			name:     "addurl_test#1",
 			urlPlain: "https://www.yandex.ru",
-			testFile: "memory.log",
 			want: want{
 				contentType: "text/plain",
 				statusCode:  201,
 			},
 			request: "/",
-			defURL:  "http://localhost:8080",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, strings.NewReader(tt.urlPlain))
 
-			m := services.NewMemory()
-			r := Routers(tt.defURL, m, tt.testFile)
+			r := *Routers(lc.config, store)
 			w := httptest.NewRecorder()
-			h := logger.WhithLogging(AddURL(*r))
+			h := logger.WhithLogging(r.AddURL())
 
 			h(w, request)
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"path/filepath"
 
@@ -23,28 +24,33 @@ func run() error {
 
 	//config
 	config := config.New()
-	address := config.Address
 	LogLevel := config.LogLevel
-	fileName := config.MemoryFile
-
 	if err := logger.Initialize(LogLevel); err != nil {
 		return err
 	}
 
-	m := services.NewMemory()
-	err := services.MemoryFileSave(fileName, m)
+	store, err := services.NewStore(config)
 	if err != nil {
+		logger.Log.Error("Error store created")
 		return err
 	}
-	absPath, err := filepath.Abs(fileName)
-	if err != nil {
-		return err
-	}
-	config.MemoryFile = absPath
-	fileName = config.MemoryFile
-	//router chi
-	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config.URL, m, fileName).Handle)))
 
-	logger.Log.Info("Running server", zap.String("address", address))
-	return http.ListenAndServe(address, r)
+	if config.MemoryFile != "" {
+		absPath, err := filepath.Abs(config.MemoryFile)
+		if err != nil {
+			return err
+		}
+		logger.Log.Info("absolute path memory file")
+		config.MemoryFile = absPath
+	}
+
+	if config.DatabaseDSN != "" {
+		store.CreateTableDB(context.Background())
+	}
+
+	//router chi
+	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config, store).Handle)))
+
+	logger.Log.Info("Running server", zap.String("address", config.Address))
+	return http.ListenAndServe(config.Address, r)
 }
