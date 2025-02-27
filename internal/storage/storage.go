@@ -1,6 +1,13 @@
 package storage
 
-import "database/sql"
+import (
+	"database/sql"
+)
+
+type URLService interface {
+	ShortenURL(longURL string, fileName string) string
+	GetOriginalURL(shortURL string) (string, error)
+}
 
 type MemoryStorage struct {
 	Memory map[string]string
@@ -11,9 +18,4 @@ type FileStore struct {
 }
 type DBStorage struct {
 	DB *sql.DB
-}
-
-type URLService interface {
-	ShortenURL(longURL string, fileName string) string
-	GetOriginalURL(shortURL string) (string, error)
 }

@@ -11,6 +11,7 @@ type Config struct {
 	LogLevel    string
 	MemoryFile  string
 	DatabaseDSN string
+	SecretKey   string
 }
 
 func New() *Config {
@@ -20,8 +21,9 @@ func New() *Config {
 	flag.StringVar(&config.URL, "b", "http://localhost:8080", "last url")
 	flag.StringVar(&config.LogLevel, "l", "info", "log level")
 	flag.StringVar(&config.MemoryFile, "f", "memory.log", "path storage file")
-	// flag.StringVar(&config.DatabaseDSN, "d", "host=localhost user=postgres password=1234567890 dbname=shorten sslmode=disable", "Database DSN")
-	flag.StringVar(&config.DatabaseDSN, "d", "", "Database DSN")
+	flag.StringVar(&config.DatabaseDSN, "d", "host=localhost user=postgres password=1234567890 dbname=shorten sslmode=disable", "Database DSN")
+	// flag.StringVar(&config.DatabaseDSN, "d", "", "Database DSN")
+	flag.StringVar(&config.SecretKey, "s", "secretkey", "Key for JWT")
 
 	flag.Parse()
 
@@ -39,6 +41,9 @@ func New() *Config {
 	}
 	if val, state := os.LookupEnv("DATABASE_DSN"); state {
 		config.DatabaseDSN = val
+	}
+	if val, state := os.LookupEnv("SECRET_KEY"); state {
+		config.SecretKey = val
 	}
 
 	return &config

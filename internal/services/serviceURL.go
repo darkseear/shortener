@@ -19,13 +19,31 @@ import (
 
 const sizeURL int64 = 8
 
-type LocalMemory struct {
-	localMemory *storage.MemoryStorage
-}
+// type LocalMemory struct {
+// 	localMemory *storage.MemoryStorage
+// }
 
-type LocalDB struct {
-	localDB *storage.DBStorage
-}
+// type LocalDB struct {
+// 	localDB *storage.DBStorage
+// }
+
+// func NewDB(strDB string) (*LocalDB, error) {
+// 	db, err := sql.Open("pgx", strDB)
+// 	if err != nil {
+// 		logger.Log.Info("Error create DB", zap.Error(err))
+// 		return nil, err
+// 	}
+// 	return &LocalDB{&storage.DBStorage{
+// 		DB: db,
+// 	}}, nil
+// }
+
+// func NewMemory() *LocalMemory {
+// 	logger.Log.Info("Create storage")
+// 	return &LocalMemory{&storage.MemoryStorage{
+// 		Memory: make(map[string]string),
+// 	}}
+// }
 
 type Store struct {
 	lm    *storage.MemoryStorage
@@ -34,45 +52,28 @@ type Store struct {
 }
 
 func NewStore(config *config.Config) (*Store, error) {
-	if config.DatabaseDSN != "" {
+	var store Store
+
+	switch {
+	case config.DatabaseDSN != "":
 		logger.Log.Info("Create storage DB")
 		db, err := sql.Open("pgx", config.DatabaseDSN)
 		if err != nil {
 			logger.Log.Error("Error create storage DB", zap.Error(err))
 			return nil, err
 		}
-		return &Store{lDB: &storage.DBStorage{
-			DB: db,
-		}}, nil
-	} else if config.MemoryFile != "" {
+		store.lDB = &storage.DBStorage{DB: db}
+
+	case config.MemoryFile != "":
 		logger.Log.Info("Create storage MemoryFile")
-		return &Store{lFile: &storage.FileStore{
-			File: config.MemoryFile,
-		}}, nil
-	} else {
+		store.lFile = &storage.FileStore{File: config.MemoryFile}
+
+	default:
 		logger.Log.Info("Create storage Memory")
-		return &Store{lm: &storage.MemoryStorage{
-			Memory: make(map[string]string),
-		}}, nil
+		store.lm = &storage.MemoryStorage{Memory: make(map[string]string)}
 	}
-}
 
-func NewDB(strDB string) (*LocalDB, error) {
-	db, err := sql.Open("pgx", strDB)
-	if err != nil {
-		logger.Log.Info("Error create DB", zap.Error(err))
-		return nil, err
-	}
-	return &LocalDB{&storage.DBStorage{
-		DB: db,
-	}}, nil
-}
-
-func NewMemory() *LocalMemory {
-	logger.Log.Info("Create storage")
-	return &LocalMemory{&storage.MemoryStorage{
-		Memory: make(map[string]string),
-	}}
+	return &store, nil
 }
 
 func (s *Store) ShortenURL(longURL string, cfg *config.Config) (string, int) {
@@ -187,7 +188,8 @@ func (s *Store) CreateTableDB(ctx context.Context) error {
 	query := "CREATE TABLE IF NOT EXISTS urls (" +
 		"id SERIAL PRIMARY KEY," +
 		"long VARCHAR(255) NOT NULL UNIQUE," +
-		"shorten VARCHAR(50) NOT NULL UNIQUE)"
+		"shorten VARCHAR(50) NOT NULL UNIQUE," +
+		"userID VARCHAR(50) NOT NULL UNIQUE);"
 	result, err := s.lDB.DB.ExecContext(ctx, query)
 	if err != nil {
 		logger.Log.Error("Error created table", zap.Error(err))

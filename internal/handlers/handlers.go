@@ -11,14 +11,17 @@ import (
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/services"
+	"github.com/darkseear/shortener/internal/services/serviceAuth"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/zap"
 )
 
 type Router struct {
 	Handle *chi.Mux
 	Store  *services.Store
 	Cfg    *config.Config
+	Auth   *serviceAuth.AuthService
 }
 
 func Routers(cfg *config.Config, store *services.Store) *Router {
@@ -27,6 +30,7 @@ func Routers(cfg *config.Config, store *services.Store) *Router {
 		Handle: chi.NewRouter(),
 		Store:  store,
 		Cfg:    cfg,
+		Auth:   serviceAuth.NewAuthService(cfg.SecretKey),
 	}
 
 	r.Handle.Post("/", r.AddURL())
@@ -34,6 +38,7 @@ func Routers(cfg *config.Config, store *services.Store) *Router {
 	r.Handle.Post("/api/shorten", r.Shorten())
 	r.Handle.Post("/api/shorten/batch", r.ShortenBatch())
 	r.Handle.Get("/ping", r.PingDB())
+	r.Handle.Get("/api/user/urls", r.ListURL())
 
 	return &r
 }
@@ -44,6 +49,7 @@ type Handlers interface {
 	Shorten() http.HandlerFunc
 	ShortenBatch() http.HandlerFunc
 	PingDB() http.HandlerFunc
+	ListURL() http.HandlerFunc
 }
 
 func readJSON(req *http.Request, v interface{}) error {
@@ -166,5 +172,23 @@ func (r *Router) PingDB() http.HandlerFunc {
 
 		defer db.Close()
 		res.WriteHeader(http.StatusOK)
+	}
+}
+
+func (r *Router) ListURL() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		// token, err := r.Auth.GenerateToken("1")
+		// if err != nil {
+		// 	http.Error(res, err.Error(), http.StatusInternalServerError)
+		// 	return
+		// }
+		userID := r.Auth.IssueCookie(res, req, "3")
+		if userID == "" {
+			res.WriteHeader(http.StatusUnauthorized)
+		}
+		logger.Log.Info("User", zap.String("userID", userID))
+
+		// res.WriteHeader(http.StatusOK)
+		res.Write([]byte(userID))
 	}
 }
