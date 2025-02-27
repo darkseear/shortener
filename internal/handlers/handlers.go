@@ -11,7 +11,7 @@ import (
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/services"
-	"github.com/darkseear/shortener/internal/services/serviceAuth"
+	serviceauth "github.com/darkseear/shortener/internal/services/serviceAuth"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
@@ -21,7 +21,7 @@ type Router struct {
 	Handle *chi.Mux
 	Store  *services.Store
 	Cfg    *config.Config
-	Auth   *serviceAuth.AuthService
+	Auth   *serviceauth.AuthService
 }
 
 func Routers(cfg *config.Config, store *services.Store) *Router {
@@ -30,7 +30,7 @@ func Routers(cfg *config.Config, store *services.Store) *Router {
 		Handle: chi.NewRouter(),
 		Store:  store,
 		Cfg:    cfg,
-		Auth:   serviceAuth.NewAuthService(cfg.SecretKey),
+		Auth:   serviceauth.NewAuthService(cfg.SecretKey),
 	}
 
 	r.Handle.Post("/", r.AddURL())

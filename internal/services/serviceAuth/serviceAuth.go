@@ -1,4 +1,4 @@
-package serviceAuth
+package serviceauth
 
 import (
 	"errors"
