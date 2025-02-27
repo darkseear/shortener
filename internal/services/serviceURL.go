@@ -76,16 +76,16 @@ func NewStore(config *config.Config) (*Store, error) {
 	return &store, nil
 }
 
-func (s *Store) ShortenURL(longURL string, cfg *config.Config) (string, int) {
+func (s *Store) ShortenURL(longURL string, cfg *config.Config, userID string) (string, int) {
 	shortURL := GenerateShortURL(sizeURL)
 
 	if cfg.DatabaseDSN != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		query := "INSERT INTO urls (long, shorten) VALUES ($1, $2) ON CONFLICT (long) DO NOTHING RETURNING *;"
+		query := "INSERT INTO urls (long, shorten, userid) VALUES ($1, $2, $3) ON CONFLICT (long) DO NOTHING RETURNING *;"
 
-		r, err := s.lDB.DB.ExecContext(ctx, query, longURL, shortURL)
+		r, err := s.lDB.DB.ExecContext(ctx, query, longURL, shortURL, userID)
 
 		if err != nil {
 			logger.Log.Error("Not create write in table", zap.Error(err))
@@ -110,10 +110,10 @@ func (s *Store) ShortenURL(longURL string, cfg *config.Config) (string, int) {
 				logger.Log.Error("db error", zap.Error(err))
 				return "", http.StatusBadRequest
 			}
-			logger.Log.Info("In db storage", zap.String("shortURL", short), zap.String("longURL", longURL))
+			logger.Log.Info("In db storage", zap.String("shortURL", short), zap.String("longURL", longURL), zap.String("userID", userID))
 			return short, http.StatusConflict
 		} else {
-			logger.Log.Info("Add in db storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
+			logger.Log.Info("Add in db storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL), zap.String("userID", userID))
 			return shortURL, http.StatusCreated
 		}
 
@@ -135,7 +135,7 @@ func (s *Store) ShortenURL(longURL string, cfg *config.Config) (string, int) {
 	}
 }
 
-func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config) (string, error) {
+func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config, userID string) (string, error) {
 	if cfg.DatabaseDSN != "" {
 		logger.Log.Info("start get long url db")
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -183,13 +183,53 @@ func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config) (string, err
 	}
 }
 
+func (s *Store) GetOriginalURLByUserID(cfg *config.Config, userID string) (string, error) {
+	logger.Log.Info("start get long url db")
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	if userID != "" {
+		query := "SELECT shorten, long FROM urls WHERE userid = $1"
+
+		type URLPair struct {
+			ShortURL string
+			LongURL  string
+		}
+		var urls []URLPair
+
+		rows, err := s.lDB.DB.QueryContext(ctx, query, userID)
+		if err != nil {
+			logger.Log.Error("GetURL query error", zap.Error(err))
+			return "", err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var URL string
+			var OURL string
+			if err := rows.Scan(&OURL, &URL); err != nil {
+				logger.Log.Error("GetURL scan error", zap.Error(err))
+				return "", err
+			}
+			urls = append(urls, URLPair{ShortURL: OURL, LongURL: URL})
+		}
+		if err := rows.Err(); err != nil {
+			logger.Log.Error("GetURL rows error", zap.Error(err))
+			return "", err
+		}
+		fmt.Println(urls)
+	}
+
+	return "", nil
+}
+
 func (s *Store) CreateTableDB(ctx context.Context) error {
 	logger.Log.Info("Create table shorten")
 	query := "CREATE TABLE IF NOT EXISTS urls (" +
 		"id SERIAL PRIMARY KEY," +
 		"long VARCHAR(255) NOT NULL UNIQUE," +
 		"shorten VARCHAR(50) NOT NULL UNIQUE," +
-		"userID VARCHAR(50) UNIQUE);"
+		"userID VARCHAR(50));"
 	result, err := s.lDB.DB.ExecContext(ctx, query)
 	if err != nil {
 		logger.Log.Error("Error created table", zap.Error(err))

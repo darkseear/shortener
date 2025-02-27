@@ -3,7 +3,10 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
+	"math"
+	"math/rand/v2"
 	"net/http"
 	"strings"
 
@@ -11,7 +14,7 @@ import (
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/services"
-	serviceauth "github.com/darkseear/shortener/internal/services/serviceAuth"
+	"github.com/darkseear/shortener/internal/services/serviceauth"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
@@ -67,6 +70,8 @@ func writeJSON(res http.ResponseWriter, status int, v interface{}) error {
 
 func (r *Router) GetURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		userRand := fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
+		userID := r.Auth.IssueCookie(res, req, userRand)
 		path := strings.TrimSuffix(strings.TrimPrefix(req.URL.Path, "/"), "/")
 		parts := strings.Split(path, "/")
 		paramURLID := parts[0]
@@ -76,7 +81,7 @@ func (r *Router) GetURL() http.HandlerFunc {
 			return
 		}
 
-		count, err := r.Store.GetOriginalURL(paramURLID, r.Cfg)
+		count, err := r.Store.GetOriginalURL(paramURLID, r.Cfg, userID)
 		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
 			return
@@ -89,6 +94,8 @@ func (r *Router) GetURL() http.HandlerFunc {
 
 func (r *Router) AddURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		userRand := fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
+		userID := r.Auth.IssueCookie(res, req, userRand)
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
@@ -104,7 +111,7 @@ func (r *Router) AddURL() http.HandlerFunc {
 		}
 
 		res.Header().Set("Content-Type", "text/plain")
-		short, status := r.Store.ShortenURL(strURL, r.Cfg)
+		short, status := r.Store.ShortenURL(strURL, r.Cfg, userID)
 		res.WriteHeader(status)
 		res.Write([]byte(r.Cfg.URL + "/" + short))
 	}
@@ -113,6 +120,9 @@ func (r *Router) AddURL() http.HandlerFunc {
 func (r *Router) Shorten() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		var longJSON models.LongJSON
+		userRand := fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
+		userID := r.Auth.IssueCookie(res, req, userRand)
+
 		if err := readJSON(req, &longJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
@@ -124,7 +134,7 @@ func (r *Router) Shorten() http.HandlerFunc {
 			return
 		}
 
-		shortenURL, status := r.Store.ShortenURL(longURL, r.Cfg)
+		shortenURL, status := r.Store.ShortenURL(longURL, r.Cfg, userID)
 		shortenJSON := models.ShortenJSON{Result: r.Cfg.URL + "/" + shortenURL}
 
 		if err := writeJSON(res, status, shortenJSON); err != nil {
@@ -135,6 +145,8 @@ func (r *Router) Shorten() http.HandlerFunc {
 
 func (r *Router) ShortenBatch() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		userRand := fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
+		userID := r.Auth.IssueCookie(res, req, userRand)
 		var batchLongJSON []models.BatchLongJSON
 		if err := readJSON(req, &batchLongJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
@@ -143,7 +155,7 @@ func (r *Router) ShortenBatch() http.HandlerFunc {
 
 		var batchShortenJSON []models.BatchShortenJSON
 		for _, item := range batchLongJSON {
-			shortenURL, _ := r.Store.ShortenURL(item.LongJSON, r.Cfg)
+			shortenURL, _ := r.Store.ShortenURL(item.LongJSON, r.Cfg, userID)
 			batchShortenJSON = append(batchShortenJSON, models.BatchShortenJSON{
 				CorrelationID: item.CorrelationID,
 				ShortJSON:     r.Cfg.URL + "/" + shortenURL,
@@ -177,15 +189,15 @@ func (r *Router) PingDB() http.HandlerFunc {
 
 func (r *Router) ListURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		// token, err := r.Auth.GenerateToken("1")
-		// if err != nil {
-		// 	http.Error(res, err.Error(), http.StatusInternalServerError)
-		// 	return
-		// }
-		userID := r.Auth.IssueCookie(res, req, "3")
+
+		userRand := fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
+		userID := r.Auth.IssueCookie(res, req, userRand)
+
 		if userID == "" {
 			res.WriteHeader(http.StatusUnauthorized)
 		}
+
+		r.Store.GetOriginalURLByUserID(r.Cfg, userID)
 		logger.Log.Info("User", zap.String("userID", userID))
 
 		// res.WriteHeader(http.StatusOK)
