@@ -189,7 +189,7 @@ func (s *Store) CreateTableDB(ctx context.Context) error {
 		"id SERIAL PRIMARY KEY," +
 		"long VARCHAR(255) NOT NULL UNIQUE," +
 		"shorten VARCHAR(50) NOT NULL UNIQUE," +
-		"userID VARCHAR(50) NOT NULL UNIQUE);"
+		"userID VARCHAR(50) UNIQUE);"
 	result, err := s.lDB.DB.ExecContext(ctx, query)
 	if err != nil {
 		logger.Log.Error("Error created table", zap.Error(err))
