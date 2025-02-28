@@ -203,7 +203,7 @@ func (r *Router) ListURL() http.HandlerFunc {
 		if len(urls) == 0 {
 			res.WriteHeader(http.StatusNoContent)
 		}
-		if err := writeJSON(res, http.StatusCreated, urls); err != nil {
+		if err := writeJSON(res, http.StatusOK, urls); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 		}
 		logger.Log.Info("User", zap.String("userID", userID))
