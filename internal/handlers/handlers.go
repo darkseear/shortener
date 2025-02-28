@@ -197,10 +197,19 @@ func (r *Router) ListURL() http.HandlerFunc {
 			res.WriteHeader(http.StatusUnauthorized)
 		}
 
-		r.Store.GetOriginalURLByUserID(r.Cfg, userID)
+		urls, err := r.Store.GetOriginalURLByUserID(r.Cfg, userID)
+		if err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+		}
+		if len(urls) == 0 {
+			res.WriteHeader(http.StatusNoContent)
+		}
+		if err := writeJSON(res, http.StatusCreated, urls); err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+		}
 		logger.Log.Info("User", zap.String("userID", userID))
 
-		// res.WriteHeader(http.StatusOK)
-		res.Write([]byte(userID))
+		// // res.WriteHeader(http.StatusOK)
+		// res.Write([]byte(userID))
 	}
 }
