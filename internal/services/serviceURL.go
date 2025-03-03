@@ -149,11 +149,13 @@ func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config, userID strin
 			return "", err
 		}
 		defer rows.Close()
-		err = rows.Scan(&DBUrlShorten.ShortURL, &DBUrlShorten.LongURL, &DBUrlShorten.UserID, &DBUrlShorten.DeletedFlag)
-		if err != nil {
-			logger.Log.Error("GetURL scan error", zap.Error(err))
-			return "", err
+		if rows.Next() {
+			if err = rows.Scan(&DBUrlShorten.ShortURL, &DBUrlShorten.LongURL, &DBUrlShorten.UserID, &DBUrlShorten.DeletedFlag); err != nil {
+				logger.Log.Error("GetURL scan error", zap.Error(err))
+				return "", err
+			}
 		}
+
 		if DBUrlShorten.DeletedFlag {
 			logger.Log.Error("GetURL error, url is deleted", zap.Error(err))
 			return "GoneStatus", err
@@ -164,7 +166,7 @@ func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config, userID strin
 			return "", err
 		}
 
-		return DBUrlShorten.ShortURL, nil
+		return DBUrlShorten.LongURL, nil
 	} else if cfg.MemoryFile != "" {
 		logger.Log.Info("start get long url memory file")
 		c, err := NewConsumer(cfg.MemoryFile)

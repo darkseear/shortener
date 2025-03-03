@@ -86,7 +86,8 @@ func (r *Router) GetURL() http.HandlerFunc {
 		if err != nil && count == "GoneStatus" {
 			res.WriteHeader(http.StatusGone)
 			return
-		} else if err != nil {
+		}
+		if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
