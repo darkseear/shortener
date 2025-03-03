@@ -141,21 +141,30 @@ func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config, userID strin
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 
-		var URL string
-		query := "SELECT long FROM urls WHERE shorten = $1"
-		row := s.lDB.DB.QueryRowContext(ctx, query, shortURL)
-		err := row.Scan(&URL)
+		var DBUrlShorten = &models.DBUrlShorten{}
+		query := "SELECT shorten, long, userid, is_deleted FROM urls WHERE shorten = $1"
+		rows, err := s.lDB.DB.QueryContext(ctx, query, shortURL)
+		if err != nil {
+			logger.Log.Error("GetURL query error", zap.Error(err))
+			return "", err
+		}
+		defer rows.Close()
+		err = rows.Scan(&DBUrlShorten.ShortURL, &DBUrlShorten.LongURL, &DBUrlShorten.UserID, &DBUrlShorten.DeletedFlag)
 		if err != nil {
 			logger.Log.Error("GetURL scan error", zap.Error(err))
 			return "", err
 		}
-		err = row.Err()
+		if DBUrlShorten.DeletedFlag {
+			logger.Log.Error("GetURL error, url is deleted", zap.Error(err))
+			return "GoneStatus", err
+		}
+		err = rows.Err()
 		if err != nil {
 			logger.Log.Error("GetURL error", zap.Error(err))
 			return "", err
 		}
 
-		return URL, nil
+		return DBUrlShorten.ShortURL, nil
 	} else if cfg.MemoryFile != "" {
 		logger.Log.Info("start get long url memory file")
 		c, err := NewConsumer(cfg.MemoryFile)
@@ -183,11 +192,11 @@ func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config, userID strin
 	}
 }
 
-func (s *Store) GetOriginalURLByUserID(cfg *config.Config, userID string) ([]models.URLPair, error) {
+func (s *Store) GetOriginalURLByUserID(cfg *config.Config, userID string) ([]models.DBUrlShorten, error) {
 	logger.Log.Info("start get long url db")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	var urls []models.URLPair
+	var urls []models.DBUrlShorten
 	if userID != "" {
 		query := "SELECT shorten, long FROM urls WHERE userid = $1"
 		rows, err := s.lDB.DB.QueryContext(ctx, query, userID)
@@ -204,7 +213,7 @@ func (s *Store) GetOriginalURLByUserID(cfg *config.Config, userID string) ([]mod
 				logger.Log.Error("GetURL scan error", zap.Error(err))
 				return urls, err
 			}
-			urls = append(urls, models.URLPair{ShortURL: "http://" + cfg.Address + "/" + OURL, LongURL: URL})
+			urls = append(urls, models.DBUrlShorten{ShortURL: "http://" + cfg.Address + "/" + OURL, LongURL: URL})
 		}
 		if err := rows.Err(); err != nil {
 			logger.Log.Error("GetURL rows error", zap.Error(err))
@@ -216,13 +225,32 @@ func (s *Store) GetOriginalURLByUserID(cfg *config.Config, userID string) ([]mod
 	return urls, nil
 }
 
+func (s *Store) DeleteURLByUserID(shortURL string, cfg *config.Config, userID string) error {
+	logger.Log.Info("start delete url")
+	if cfg.DatabaseDSN != "" {
+		logger.Log.Info("start delete url db")
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		query := "UPDATE urls SET is_deleted = true WHERE shorten = $1 AND userID = $2"
+		_, err := s.lDB.DB.ExecContext(ctx, query, shortURL, userID)
+		if err != nil {
+			logger.Log.Error("DeleteURL error", zap.Error(err))
+			return err
+		}
+		return nil
+	}
+	return nil
+}
+
 func (s *Store) CreateTableDB(ctx context.Context) error {
 	logger.Log.Info("Create table shorten")
 	query := "CREATE TABLE IF NOT EXISTS urls (" +
 		"id SERIAL PRIMARY KEY," +
 		"long VARCHAR(255) NOT NULL UNIQUE," +
 		"shorten VARCHAR(50) NOT NULL UNIQUE," +
-		"userID VARCHAR(50));"
+		"userID VARCHAR(50)," +
+		"is_deleted BOOL DEFAULT false);"
 	result, err := s.lDB.DB.ExecContext(ctx, query)
 	if err != nil {
 		logger.Log.Error("Error created table", zap.Error(err))

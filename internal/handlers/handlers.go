@@ -9,6 +9,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/logger"
@@ -41,6 +42,7 @@ func Routers(cfg *config.Config, store *services.Store) *Router {
 	r.Handle.Post("/api/shorten/batch", r.ShortenBatch())
 	r.Handle.Get("/ping", r.PingDB())
 	r.Handle.Get("/api/user/urls", r.ListURL())
+	r.Handle.Delete("/api/user/urls", r.DeleteURL())
 
 	return &r
 }
@@ -81,7 +83,10 @@ func (r *Router) GetURL() http.HandlerFunc {
 		}
 
 		count, err := r.Store.GetOriginalURL(paramURLID, r.Cfg, userID)
-		if err != nil {
+		if err != nil && count == "GoneStatus" {
+			res.WriteHeader(http.StatusGone)
+			return
+		} else if err != nil {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -210,5 +215,39 @@ func (r *Router) ListURL() http.HandlerFunc {
 
 		// // res.WriteHeader(http.StatusOK)
 		// res.Write([]byte(userID))
+	}
+}
+
+func (r *Router) DeleteURL() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		var mut sync.Mutex
+		userRand := fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
+		userID := r.Auth.IssueCookie(res, req, userRand)
+
+		if userID == "" {
+			res.WriteHeader(http.StatusUnauthorized)
+		}
+		fmt.Println(userID)
+
+		var urlsToDelete []string
+		if err := readJSON(req, &urlsToDelete); err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+		fmt.Println(urlsToDelete)
+
+		for _, urlsToDelete := range urlsToDelete {
+			fmt.Println(urlsToDelete)
+			mut.Lock()
+			err := r.Store.DeleteURLByUserID(urlsToDelete, r.Cfg, userID)
+			if err != nil {
+				res.WriteHeader(http.StatusInternalServerError)
+				logger.Log.Error("Delete error", zap.Error(err))
+			}
+			mut.Unlock()
+		}
+
+		logger.Log.Info("User", zap.String("Delete url is userID:", userID))
+		res.WriteHeader(http.StatusAccepted)
 	}
 }
