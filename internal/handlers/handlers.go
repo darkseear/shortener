@@ -228,17 +228,14 @@ func (r *Router) DeleteURL() http.HandlerFunc {
 		if userID == "" {
 			res.WriteHeader(http.StatusUnauthorized)
 		}
-		fmt.Println(userID)
 
 		var urlsToDelete []string
 		if err := readJSON(req, &urlsToDelete); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
-		fmt.Println(urlsToDelete)
 
 		for _, urlsToDelete := range urlsToDelete {
-			fmt.Println(urlsToDelete)
 			mut.Lock()
 			err := r.Store.DeleteURLByUserID(urlsToDelete, r.Cfg, userID)
 			if err != nil {

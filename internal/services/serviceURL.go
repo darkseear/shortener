@@ -98,7 +98,6 @@ func (s *Store) ShortenURL(longURL string, cfg *config.Config, userID string) (s
 			logger.Log.Error("Conflict long")
 			query := "SELECT shorten FROM urls WHERE long = $1"
 			s := s.lDB.DB.QueryRowContext(ctx, query, longURL)
-			fmt.Println(s)
 			var short string
 			err = s.Scan(&short)
 			if err != nil {
@@ -221,7 +220,6 @@ func (s *Store) GetOriginalURLByUserID(cfg *config.Config, userID string) ([]mod
 			logger.Log.Error("GetURL rows error", zap.Error(err))
 			return nil, err
 		}
-		// fmt.Println(urls)
 	}
 
 	return urls, nil
@@ -258,7 +256,7 @@ func (s *Store) CreateTableDB(ctx context.Context) error {
 		logger.Log.Error("Error created table", zap.Error(err))
 		return err
 	}
-	fmt.Println(result)
+	logger.Log.Info("Result", zap.Any("result", result))
 	logger.Log.Info("Created table")
 	return nil
 }
