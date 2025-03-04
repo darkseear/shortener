@@ -194,11 +194,11 @@ func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config, userID strin
 	}
 }
 
-func (s *Store) GetOriginalURLByUserID(cfg *config.Config, userID string) ([]models.DBUrlShorten, error) {
+func (s *Store) GetOriginalURLByUserID(cfg *config.Config, userID string) ([]models.URLPair, error) {
 	logger.Log.Info("start get long url db")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	var urls []models.DBUrlShorten
+	var urls []models.URLPair
 	if userID != "" {
 		query := "SELECT shorten, long FROM urls WHERE userid = $1"
 		rows, err := s.lDB.DB.QueryContext(ctx, query, userID)
@@ -215,13 +215,13 @@ func (s *Store) GetOriginalURLByUserID(cfg *config.Config, userID string) ([]mod
 				logger.Log.Error("GetURL scan error", zap.Error(err))
 				return urls, err
 			}
-			urls = append(urls, models.DBUrlShorten{ShortURL: "http://" + cfg.Address + "/" + OURL, LongURL: URL})
+			urls = append(urls, models.URLPair{ShortURL: "http://" + cfg.Address + "/" + OURL, LongURL: URL})
 		}
 		if err := rows.Err(); err != nil {
 			logger.Log.Error("GetURL rows error", zap.Error(err))
 			return nil, err
 		}
-		fmt.Println(urls)
+		// fmt.Println(urls)
 	}
 
 	return urls, nil
