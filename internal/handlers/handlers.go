@@ -83,7 +83,7 @@ func (r *Router) GetURL() http.HandlerFunc {
 		}
 
 		count, err := r.Store.GetOriginalURL(paramURLID, r.Cfg, userID)
-		if err != nil && count == "GoneStatus" {
+		if err == nil && count == "GoneStatus" {
 			res.WriteHeader(http.StatusGone)
 			return
 		}

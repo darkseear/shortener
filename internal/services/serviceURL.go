@@ -158,7 +158,7 @@ func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config, userID strin
 
 		if DBUrlShorten.DeletedFlag {
 			logger.Log.Error("GetURL error, url is deleted", zap.Error(err))
-			return "GoneStatus", err
+			return "GoneStatus", nil
 		}
 		err = rows.Err()
 		if err != nil {
