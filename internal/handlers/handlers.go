@@ -146,6 +146,7 @@ func (r *Router) Shorten() http.HandlerFunc {
 
 		if err := writeJSON(res, status, shortenJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
 		}
 	}
 }
@@ -170,6 +171,7 @@ func (r *Router) ShortenBatch() http.HandlerFunc {
 
 		if err := writeJSON(res, http.StatusCreated, batchShortenJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
 		}
 	}
 }
@@ -180,11 +182,13 @@ func (r *Router) PingDB() http.HandlerFunc {
 		if errSQL != nil {
 			logger.Log.Error(errSQL.Error())
 			res.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
 		if errPing := db.Ping(); errPing != nil {
 			logger.Log.Error(errPing.Error())
 			res.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
 		defer db.Close()
@@ -198,17 +202,21 @@ func (r *Router) ListURL() http.HandlerFunc {
 
 		if userID == "" {
 			res.WriteHeader(http.StatusUnauthorized)
+			return
 		}
 
 		urls, err := r.Store.GetOriginalURLByUserID(r.Cfg, userID)
 		if err != nil {
 			res.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 		if len(urls) == 0 {
 			res.WriteHeader(http.StatusNoContent)
+			return
 		}
 		if err := writeJSON(res, http.StatusOK, urls); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
 		}
 		logger.Log.Info("User", zap.String("userID", userID))
 	}
@@ -221,6 +229,7 @@ func (r *Router) DeleteURL() http.HandlerFunc {
 
 		if userID == "" {
 			res.WriteHeader(http.StatusUnauthorized)
+			return
 		}
 
 		var urlsToDelete []string
@@ -235,6 +244,7 @@ func (r *Router) DeleteURL() http.HandlerFunc {
 			if err != nil {
 				res.WriteHeader(http.StatusInternalServerError)
 				logger.Log.Error("Delete error", zap.Error(err))
+				return
 			}
 			mut.Unlock()
 		}
