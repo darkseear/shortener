@@ -13,6 +13,8 @@ import (
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/storage"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 )
@@ -82,39 +84,33 @@ func (s *Store) ShortenURL(longURL string, cfg *config.Config, userID string) (s
 	if cfg.DatabaseDSN != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-
-		query := "INSERT INTO urls (long, shorten, userid) VALUES ($1, $2, $3) ON CONFLICT (long) DO NOTHING RETURNING *;"
-
-		r, err := s.lDB.DB.ExecContext(ctx, query, longURL, shortURL, userID)
+		query := "INSERT INTO urls (long, shorten, userid) VALUES ($1, $2, $3) RETURNING *;"
+		_, err := s.lDB.DB.ExecContext(ctx, query, longURL, shortURL, userID)
 
 		if err != nil {
+			if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == pgerrcode.UniqueViolation {
+				logger.Log.Error("Conflict long")
+				query := "SELECT shorten FROM urls WHERE long = $1"
+				s := s.lDB.DB.QueryRowContext(ctx, query, longURL)
+				var short string
+				err = s.Scan(&short)
+				if err != nil {
+					logger.Log.Error("scan error", zap.Error(err))
+					return "", http.StatusBadRequest
+				}
+				err = s.Err()
+				if err != nil {
+					logger.Log.Error("db error", zap.Error(err))
+					return "", http.StatusBadRequest
+				}
+				logger.Log.Info("In db storage", zap.String("shortURL", short), zap.String("longURL", longURL), zap.String("userID", userID))
+				return short, http.StatusConflict
+			}
 			logger.Log.Error("Not create write in table", zap.Error(err))
+			return "", http.StatusBadRequest
 		}
-		in, err := r.RowsAffected()
-		if err != nil {
-			logger.Log.Error("Rows affected error", zap.Error(err))
-		}
-		if in == 0 {
-			logger.Log.Error("Conflict long")
-			query := "SELECT shorten FROM urls WHERE long = $1"
-			s := s.lDB.DB.QueryRowContext(ctx, query, longURL)
-			var short string
-			err = s.Scan(&short)
-			if err != nil {
-				logger.Log.Error("scan error", zap.Error(err))
-				return "", http.StatusBadRequest
-			}
-			err = s.Err()
-			if err != nil {
-				logger.Log.Error("db error", zap.Error(err))
-				return "", http.StatusBadRequest
-			}
-			logger.Log.Info("In db storage", zap.String("shortURL", short), zap.String("longURL", longURL), zap.String("userID", userID))
-			return short, http.StatusConflict
-		} else {
-			logger.Log.Info("Add in db storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL), zap.String("userID", userID))
-			return shortURL, http.StatusCreated
-		}
+		logger.Log.Info("Add in db storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL), zap.String("userID", userID))
+		return shortURL, http.StatusCreated
 
 	} else if cfg.MemoryFile != "" {
 		p, err := NewProducer(cfg.MemoryFile)
@@ -251,12 +247,11 @@ func (s *Store) CreateTableDB(ctx context.Context) error {
 		"shorten VARCHAR(50) NOT NULL UNIQUE," +
 		"userID VARCHAR(50)," +
 		"is_deleted BOOL DEFAULT false);"
-	result, err := s.lDB.DB.ExecContext(ctx, query)
+	_, err := s.lDB.DB.ExecContext(ctx, query)
 	if err != nil {
 		logger.Log.Error("Error created table", zap.Error(err))
 		return err
 	}
-	logger.Log.Info("Result", zap.Any("result", result))
 	logger.Log.Info("Created table")
 	return nil
 }
