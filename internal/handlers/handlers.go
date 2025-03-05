@@ -70,10 +70,13 @@ func writeJSON(res http.ResponseWriter, status int, v interface{}) error {
 	return enc.Encode(v)
 }
 
+func generateRandoUserID() string {
+	return fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
+}
+
 func (r *Router) GetURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		userRand := fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
-		userID := r.Auth.IssueCookie(res, req, userRand)
+		userID := r.Auth.IssueCookie(res, req, generateRandoUserID())
 		path := strings.TrimSuffix(strings.TrimPrefix(req.URL.Path, "/"), "/")
 		parts := strings.Split(path, "/")
 		paramURLID := parts[0]
@@ -100,8 +103,7 @@ func (r *Router) GetURL() http.HandlerFunc {
 
 func (r *Router) AddURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		userRand := fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
-		userID := r.Auth.IssueCookie(res, req, userRand)
+		userID := r.Auth.IssueCookie(res, req, generateRandoUserID())
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
@@ -126,8 +128,7 @@ func (r *Router) AddURL() http.HandlerFunc {
 func (r *Router) Shorten() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		var longJSON models.LongJSON
-		userRand := fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
-		userID := r.Auth.IssueCookie(res, req, userRand)
+		userID := r.Auth.IssueCookie(res, req, generateRandoUserID())
 
 		if err := readJSON(req, &longJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
@@ -151,8 +152,7 @@ func (r *Router) Shorten() http.HandlerFunc {
 
 func (r *Router) ShortenBatch() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		userRand := fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
-		userID := r.Auth.IssueCookie(res, req, userRand)
+		userID := r.Auth.IssueCookie(res, req, generateRandoUserID())
 		var batchLongJSON []models.BatchLongJSON
 		if err := readJSON(req, &batchLongJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
@@ -176,7 +176,6 @@ func (r *Router) ShortenBatch() http.HandlerFunc {
 
 func (r *Router) PingDB() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-
 		db, errSQL := sql.Open("pgx", r.Cfg.DatabaseDSN)
 		if errSQL != nil {
 			logger.Log.Error(errSQL.Error())
@@ -195,9 +194,7 @@ func (r *Router) PingDB() http.HandlerFunc {
 
 func (r *Router) ListURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-
-		userRand := fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
-		userID := r.Auth.IssueCookie(res, req, userRand)
+		userID := r.Auth.IssueCookie(res, req, generateRandoUserID())
 
 		if userID == "" {
 			res.WriteHeader(http.StatusUnauthorized)
@@ -214,17 +211,13 @@ func (r *Router) ListURL() http.HandlerFunc {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 		}
 		logger.Log.Info("User", zap.String("userID", userID))
-
-		// // res.WriteHeader(http.StatusOK)
-		// res.Write([]byte(userID))
 	}
 }
 
 func (r *Router) DeleteURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		var mut sync.Mutex
-		userRand := fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
-		userID := r.Auth.IssueCookie(res, req, userRand)
+		userID := r.Auth.IssueCookie(res, req, generateRandoUserID())
 
 		if userID == "" {
 			res.WriteHeader(http.StatusUnauthorized)
