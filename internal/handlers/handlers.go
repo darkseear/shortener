@@ -11,13 +11,14 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/go-chi/chi/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/zap"
+
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/services"
-	"github.com/go-chi/chi/v5"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"go.uber.org/zap"
 )
 
 type Router struct {

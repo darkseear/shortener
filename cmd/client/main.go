@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	// "net/url"
-	// "strconv"
 )
 
 func main() {

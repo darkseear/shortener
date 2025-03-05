@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/darkseear/shortener/internal/logger"
 	"github.com/dgrijalva/jwt-go"
+
+	"github.com/darkseear/shortener/internal/logger"
 )
 
 type AuthService struct {

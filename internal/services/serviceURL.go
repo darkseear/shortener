@@ -9,43 +9,18 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/zap"
+
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/storage"
 	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5/pgconn"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"go.uber.org/zap"
 )
 
 const sizeURL int64 = 8
-
-// type LocalMemory struct {
-// 	localMemory *storage.MemoryStorage
-// }
-
-// type LocalDB struct {
-// 	localDB *storage.DBStorage
-// }
-
-// func NewDB(strDB string) (*LocalDB, error) {
-// 	db, err := sql.Open("pgx", strDB)
-// 	if err != nil {
-// 		logger.Log.Info("Error create DB", zap.Error(err))
-// 		return nil, err
-// 	}
-// 	return &LocalDB{&storage.DBStorage{
-// 		DB: db,
-// 	}}, nil
-// }
-
-// func NewMemory() *LocalMemory {
-// 	logger.Log.Info("Create storage")
-// 	return &LocalMemory{&storage.MemoryStorage{
-// 		Memory: make(map[string]string),
-// 	}}
-// }
 
 type Store struct {
 	lm    *storage.MemoryStorage

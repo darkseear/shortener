@@ -5,12 +5,13 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"go.uber.org/zap"
+
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/gzip"
 	"github.com/darkseear/shortener/internal/handlers"
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/services"
-	"go.uber.org/zap"
 )
 
 func main() {
