@@ -1,6 +1,8 @@
 module github.com/darkseear/shortener
 
-go 1.23.7
+go 1.22.4
+
+toolchain go1.23.7
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
