@@ -220,9 +220,7 @@ func (r *Router) ListURL() http.HandlerFunc {
 
 func (r *Router) DeleteURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		// var mut sync.Mutex
 		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
-
 		if userID == "" {
 			res.WriteHeader(http.StatusUnauthorized)
 			return
@@ -234,16 +232,6 @@ func (r *Router) DeleteURL() http.HandlerFunc {
 			return
 		}
 
-		// for _, urlsToDelete := range urlsToDelete {
-		// 	mut.Lock()
-		// 	err := r.Store.DeleteURLByUserID(urlsToDelete, r.Cfg, userID)
-		// 	mut.Unlock()
-		// 	if err != nil {
-		// 		res.WriteHeader(http.StatusInternalServerError)
-		// 		logger.Log.Error("Delete error", zap.Error(err))
-		// 		return
-		// 	}
-		// }
 		err := r.Store.DeleteURLByUserID(urlsToDelete, r.Cfg, userID)
 		if err != nil {
 			res.WriteHeader(http.StatusInternalServerError)
