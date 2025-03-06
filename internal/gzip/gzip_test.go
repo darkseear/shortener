@@ -8,11 +8,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/handlers"
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/services"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGzipCompression(t *testing.T) {
