@@ -52,43 +52,35 @@ func (s *AuthService) ValidateToken(tokenString string) (string, error) {
 	return "", errors.New("invalid token")
 }
 
+func (s *AuthService) SetCookie(w http.ResponseWriter, userID string) string {
+	tokenString, err := s.GenerateToken(userID)
+	if err != nil {
+		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		return ""
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    tokenString,
+		Expires:  time.Now().Add(72 * time.Hour),
+		HttpOnly: true,
+	})
+	return userID
+}
+
 func (s *AuthService) IssueCookie(w http.ResponseWriter, r *http.Request, userID string) string {
 	cookie, err := r.Cookie("auth_token")
 	if err != nil || cookie == nil {
-		// создаем и применяем новое куки если его нет
-		tokenString, err := s.GenerateToken(userID)
-		if err != nil {
-			logger.Log.Error("Неудалось сгенерировать куки")
-			http.Error(w, "Failed to generate token", http.StatusInternalServerError)
-			return ""
-		}
-		logger.Log.Info("Устанавливаем новый токен")
-		http.SetCookie(w, &http.Cookie{
-			Name:     "auth_token",
-			Value:    tokenString,
-			Expires:  time.Now().Add(72 * time.Hour),
-			HttpOnly: true,
-		})
-		return userID
+		logger.Log.Info("Создаем и применяем новое куки если его нет")
+		UID := s.SetCookie(w, userID)
+		return UID
 	}
 
-	// Проверяем существующий токен
 	userID, err = s.ValidateToken(cookie.Value)
 	if err != nil {
 		logger.Log.Info("Токен не действителен")
-		// токен не действителен, создаем новый токен
-		tokenString, err := s.GenerateToken(userID)
-		if err != nil {
-			http.Error(w, "Failed to generate token", http.StatusInternalServerError)
-			return ""
-		}
-		logger.Log.Info("Устанавливаем новый токен")
-		http.SetCookie(w, &http.Cookie{
-			Name:     "auth_token",
-			Value:    tokenString,
-			Expires:  time.Now().Add(72 * time.Hour),
-			HttpOnly: true,
-		})
+		UID := s.SetCookie(w, userID)
+		return UID
 	}
+
 	return userID
 }
