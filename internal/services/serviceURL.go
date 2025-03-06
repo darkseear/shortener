@@ -9,15 +9,16 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/lib/pq"
 	"go.uber.org/zap"
 
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/storage"
-	"github.com/jackc/pgerrcode"
 )
 
 const sizeURL int64 = 8
@@ -196,15 +197,21 @@ func (s *Store) GetOriginalURLByUserID(cfg *config.Config, userID string) ([]mod
 	return urls, nil
 }
 
-func (s *Store) DeleteURLByUserID(shortURL string, cfg *config.Config, userID string) error {
+func (s *Store) DeleteURLByUserID(shortURL []string, cfg *config.Config, userID string) error {
 	logger.Log.Info("start delete url")
 	if cfg.DatabaseDSN != "" {
 		logger.Log.Info("start delete url db")
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 
-		query := "UPDATE urls SET is_deleted = true WHERE shorten = $1 AND userID = $2"
-		_, err := s.lDB.DB.ExecContext(ctx, query, shortURL, userID)
+		query := `
+		UPDATE urls 
+		SET is_deleted = true 
+		WHERE 
+		shorten = ANY($1) 
+		AND 
+		userID = $2;`
+		_, err := s.lDB.DB.ExecContext(ctx, query, pq.Array(shortURL), userID)
 		if err != nil {
 			logger.Log.Error("DeleteURL error", zap.Error(err))
 			return err

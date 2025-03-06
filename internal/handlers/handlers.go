@@ -9,7 +9,6 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -197,7 +196,6 @@ func (r *Router) PingDB() http.HandlerFunc {
 func (r *Router) ListURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
-
 		if userID == "" {
 			res.WriteHeader(http.StatusUnauthorized)
 			return
@@ -222,7 +220,7 @@ func (r *Router) ListURL() http.HandlerFunc {
 
 func (r *Router) DeleteURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		var mut sync.Mutex
+		// var mut sync.Mutex
 		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
 
 		if userID == "" {
@@ -236,15 +234,21 @@ func (r *Router) DeleteURL() http.HandlerFunc {
 			return
 		}
 
-		for _, urlsToDelete := range urlsToDelete {
-			mut.Lock()
-			err := r.Store.DeleteURLByUserID(urlsToDelete, r.Cfg, userID)
-			if err != nil {
-				res.WriteHeader(http.StatusInternalServerError)
-				logger.Log.Error("Delete error", zap.Error(err))
-				return
-			}
-			mut.Unlock()
+		// for _, urlsToDelete := range urlsToDelete {
+		// 	mut.Lock()
+		// 	err := r.Store.DeleteURLByUserID(urlsToDelete, r.Cfg, userID)
+		// 	mut.Unlock()
+		// 	if err != nil {
+		// 		res.WriteHeader(http.StatusInternalServerError)
+		// 		logger.Log.Error("Delete error", zap.Error(err))
+		// 		return
+		// 	}
+		// }
+		err := r.Store.DeleteURLByUserID(urlsToDelete, r.Cfg, userID)
+		if err != nil {
+			res.WriteHeader(http.StatusInternalServerError)
+			logger.Log.Error("Delete error", zap.Error(err))
+			return
 		}
 
 		logger.Log.Info("User", zap.String("Delete url is userID:", userID))
