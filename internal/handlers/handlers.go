@@ -25,7 +25,6 @@ type Router struct {
 	Handle *chi.Mux
 	Store  *services.Store
 	Cfg    *config.Config
-	Auth   *services.AuthService
 }
 
 func Routers(cfg *config.Config, store *services.Store) *Router {
@@ -34,7 +33,6 @@ func Routers(cfg *config.Config, store *services.Store) *Router {
 		Handle: chi.NewRouter(),
 		Store:  store,
 		Cfg:    cfg,
-		Auth:   services.NewAuthService(cfg.SecretKey),
 	}
 
 	r.Handle.Post("/", r.AddURL())
@@ -76,7 +74,7 @@ func generateRandoUserID() string {
 
 func (r *Router) GetURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		userID := r.Auth.IssueCookie(res, req, generateRandoUserID())
+		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
 		path := strings.TrimSuffix(strings.TrimPrefix(req.URL.Path, "/"), "/")
 		parts := strings.Split(path, "/")
 		paramURLID := parts[0]
@@ -103,7 +101,7 @@ func (r *Router) GetURL() http.HandlerFunc {
 
 func (r *Router) AddURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		userID := r.Auth.IssueCookie(res, req, generateRandoUserID())
+		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
@@ -128,7 +126,7 @@ func (r *Router) AddURL() http.HandlerFunc {
 func (r *Router) Shorten() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		var longJSON models.LongJSON
-		userID := r.Auth.IssueCookie(res, req, generateRandoUserID())
+		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
 
 		if err := readJSON(req, &longJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
@@ -153,7 +151,7 @@ func (r *Router) Shorten() http.HandlerFunc {
 
 func (r *Router) ShortenBatch() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		userID := r.Auth.IssueCookie(res, req, generateRandoUserID())
+		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
 		var batchLongJSON []models.BatchLongJSON
 		if err := readJSON(req, &batchLongJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
@@ -198,7 +196,7 @@ func (r *Router) PingDB() http.HandlerFunc {
 
 func (r *Router) ListURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		userID := r.Auth.IssueCookie(res, req, generateRandoUserID())
+		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
 
 		if userID == "" {
 			res.WriteHeader(http.StatusUnauthorized)
@@ -225,7 +223,7 @@ func (r *Router) ListURL() http.HandlerFunc {
 func (r *Router) DeleteURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		var mut sync.Mutex
-		userID := r.Auth.IssueCookie(res, req, generateRandoUserID())
+		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
 
 		if userID == "" {
 			res.WriteHeader(http.StatusUnauthorized)
