@@ -18,92 +18,103 @@ import (
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/models"
-	"github.com/darkseear/shortener/internal/storage"
 )
 
 const sizeURL int64 = 8
 
-type Store struct {
-	lm    *storage.MemoryStorage
-	lDB   *storage.DBStorage
-	lFile *storage.FileStore
+type MemoryStorage struct {
+	Memory map[string]string
 }
 
-func NewStore(config *config.Config) (*Store, error) {
-	var store Store
-
-	switch {
-	case config.DatabaseDSN != "":
-		logger.Log.Info("Create storage DB")
-		db, err := sql.Open("pgx", config.DatabaseDSN)
-		if err != nil {
-			logger.Log.Error("Error create storage DB", zap.Error(err))
-			return nil, err
-		}
-		store.lDB = &storage.DBStorage{DB: db}
-
-	case config.MemoryFile != "":
-		logger.Log.Info("Create storage MemoryFile")
-		store.lFile = &storage.FileStore{File: config.MemoryFile}
-
-	default:
-		logger.Log.Info("Create storage Memory")
-		store.lm = &storage.MemoryStorage{Memory: make(map[string]string)}
-	}
-
-	return &store, nil
+func NewMemoryStorage() *MemoryStorage {
+	return &MemoryStorage{Memory: make(map[string]string)}
 }
 
-func (s *Store) ShortenURL(longURL string, cfg *config.Config, userID string) (string, int) {
+type FileStore struct {
+	File string
+}
+
+func NewFileStore(file string) *FileStore {
+	return &FileStore{File: file}
+}
+
+type DBStorage struct {
+	DB *sql.DB
+}
+
+func NewDBStorage(db *sql.DB) *DBStorage {
+	return &DBStorage{DB: db}
+}
+
+// GetOriginalURL implements Storage.
+func (m *MemoryStorage) GetOriginalURL(shortURL string) (string, error) {
+	panic("unimplemented")
+}
+
+// ShortenURL implements Storage.
+func (m *MemoryStorage) ShortenURL(longURL string) (string, int) {
 	shortURL := GenerateShortURL(sizeURL)
+	m.Memory[shortURL] = longURL
+	logger.Log.Info("Add in memory storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
+	return shortURL, http.StatusCreated
+}
 
-	if cfg.DatabaseDSN != "" {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		query := "INSERT INTO urls (long, shorten, userid) VALUES ($1, $2, $3) RETURNING *;"
-		_, err := s.lDB.DB.ExecContext(ctx, query, longURL, shortURL, userID)
+// GetOriginalURL implements Storage.
+func (d *DBStorage) GetOriginalURL(shortURL string) (string, error) {
+	panic("unimplemented")
+}
 
-		if err != nil {
-			if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == pgerrcode.UniqueViolation {
-				logger.Log.Error("Conflict long")
-				query := "SELECT shorten FROM urls WHERE long = $1"
-				s := s.lDB.DB.QueryRowContext(ctx, query, longURL)
-				var short string
-				err = s.Scan(&short)
-				if err != nil {
-					logger.Log.Error("scan error", zap.Error(err))
-					return "", http.StatusBadRequest
-				}
-				err = s.Err()
-				if err != nil {
-					logger.Log.Error("db error", zap.Error(err))
-					return "", http.StatusBadRequest
-				}
-				logger.Log.Info("In db storage", zap.String("shortURL", short), zap.String("longURL", longURL), zap.String("userID", userID))
-				return short, http.StatusConflict
+// ShortenURL implements Storage.
+func (d *DBStorage) ShortenURL(longURL string, userID string) (string, int) {
+	shortURL := GenerateShortURL(sizeURL)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	query := "INSERT INTO urls (long, shorten, userid) VALUES ($1, $2, $3) RETURNING *;"
+	_, err := d.DB.ExecContext(ctx, query, longURL, shortURL, userID)
+
+	if err != nil {
+		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == pgerrcode.UniqueViolation {
+			logger.Log.Error("Conflict long")
+			query := "SELECT shorten FROM urls WHERE long = $1"
+			s := d.DB.QueryRowContext(ctx, query, longURL)
+			var short string
+			err = s.Scan(&short)
+			if err != nil {
+				logger.Log.Error("scan error", zap.Error(err))
+				return "", http.StatusBadRequest
 			}
-			logger.Log.Error("Not create write in table", zap.Error(err))
-			return "", http.StatusBadRequest
+			err = s.Err()
+			if err != nil {
+				logger.Log.Error("db error", zap.Error(err))
+				return "", http.StatusBadRequest
+			}
+			logger.Log.Info("In db storage", zap.String("shortURL", short), zap.String("longURL", longURL), zap.String("userID", userID))
+			return short, http.StatusConflict
 		}
-		logger.Log.Info("Add in db storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL), zap.String("userID", userID))
-		return shortURL, http.StatusCreated
-
-	} else if cfg.MemoryFile != "" {
-		p, err := NewProducer(cfg.MemoryFile)
-		if err != nil {
-			logger.Log.Error("producer error", zap.Error(err))
-			panic(err)
-		}
-		m := models.MemoryFile{ShortURL: shortURL, LongURL: longURL}
-		p.WriteMemoryFile(&m)
-		logger.Log.Info("Add in file storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
-		defer p.Close()
-		return shortURL, http.StatusCreated
-	} else {
-		s.lm.Memory[shortURL] = longURL
-		logger.Log.Info("Add in memory storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
-		return shortURL, http.StatusCreated
+		logger.Log.Error("Not create write in table", zap.Error(err))
+		return "", http.StatusBadRequest
 	}
+	logger.Log.Info("Add in db storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL), zap.String("userID", userID))
+	return shortURL, http.StatusCreated
+}
+
+func (f *FileStore) GetOriginalURL(shortURL string) (string, error) {
+	panic("unimplemented")
+}
+
+// ShortenURL implements Storage.
+func (f *FileStore) ShortenURL(longURL string, cfg *config.Config) (string, int) {
+	shortURL := GenerateShortURL(sizeURL)
+	p, err := NewProducer(cfg.MemoryFile)
+	if err != nil {
+		logger.Log.Error("producer error", zap.Error(err))
+		panic(err)
+	}
+	m := models.MemoryFile{ShortURL: shortURL, LongURL: longURL}
+	p.WriteMemoryFile(&m)
+	logger.Log.Info("Add in file storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
+	defer p.Close()
+	return shortURL, http.StatusCreated
 }
 
 func (s *Store) GetOriginalURL(shortURL string, cfg *config.Config, userID string) (string, error) {
@@ -221,7 +232,7 @@ func (s *Store) DeleteURLByUserID(shortURL []string, cfg *config.Config, userID 
 	return nil
 }
 
-func (s *Store) CreateTableDB(ctx context.Context) error {
+func (s *DBStorage) CreateTableDB(ctx context.Context) error {
 	logger.Log.Info("Create table shorten")
 	query := "CREATE TABLE IF NOT EXISTS urls (" +
 		"id SERIAL PRIMARY KEY," +
@@ -229,7 +240,7 @@ func (s *Store) CreateTableDB(ctx context.Context) error {
 		"shorten VARCHAR(50) NOT NULL UNIQUE," +
 		"userID VARCHAR(50)," +
 		"is_deleted BOOL DEFAULT false);"
-	_, err := s.lDB.DB.ExecContext(ctx, query)
+	_, err := d.DB.ExecContext(ctx, query)
 	if err != nil {
 		logger.Log.Error("Error created table", zap.Error(err))
 		return err

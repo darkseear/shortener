@@ -18,15 +18,16 @@ import (
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/models"
 	"github.com/darkseear/shortener/internal/services"
+	"github.com/darkseear/shortener/internal/storage"
 )
 
 type Router struct {
 	Handle *chi.Mux
-	Store  *services.Store
+	Store  storage.Storage
 	Cfg    *config.Config
 }
 
-func Routers(cfg *config.Config, store *services.Store) *Router {
+func Routers(cfg *config.Config, store storage.Storage) *Router {
 
 	r := Router{
 		Handle: chi.NewRouter(),
