@@ -13,13 +13,13 @@ import (
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/handlers"
 	"github.com/darkseear/shortener/internal/logger"
-	"github.com/darkseear/shortener/internal/services"
+	"github.com/darkseear/shortener/internal/storage"
 )
 
 func TestGzipCompression(t *testing.T) {
 
 	config := config.New()
-	store, err := services.NewStore(config)
+	store, err := storage.New(config)
 	if err != nil {
 		logger.Log.Error("Error created")
 	}

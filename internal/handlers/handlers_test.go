@@ -13,7 +13,7 @@ import (
 
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/logger"
-	"github.com/darkseear/shortener/internal/services"
+	"github.com/darkseear/shortener/internal/storage"
 )
 
 func TestGetURL(t *testing.T) {
@@ -33,7 +33,7 @@ func TestGetURL(t *testing.T) {
 	}
 
 	// config := config.New()
-	store, err := services.NewStore(lc.config)
+	store, err := storage.New(lc.config)
 	if err != nil {
 		logger.Log.Error("Error created store")
 	}
@@ -43,18 +43,20 @@ func TestGetURL(t *testing.T) {
 		url     string
 		want    int
 		request string
+		userID  string
 	}{
 		{
 			name:    "test#1",
 			url:     "https://www.yandex.ru",
 			want:    307,
 			request: "/",
+			userID:  "122",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := *Routers(lc.config, store)
-			minURL, status := store.ShortenURL(tt.url, lc.config, "")
+			minURL, status := store.ShortenURL(tt.url, tt.userID)
 			logger.Log.Info("Status", zap.Int("status", status))
 			request := httptest.NewRequest(http.MethodGet, tt.request+minURL, nil)
 			w := httptest.NewRecorder()
@@ -90,7 +92,7 @@ func TestAddURL(t *testing.T) {
 		},
 	}
 	// config := config.New()
-	store, err := services.NewStore(lc.config)
+	store, err := storage.New(lc.config)
 	if err != nil {
 		logger.Log.Error("Error created store")
 	}

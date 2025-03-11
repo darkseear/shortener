@@ -8,7 +8,8 @@ import (
 
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/models"
-	"github.com/darkseear/shortener/internal/storage"
+	// "github.com/darkseear/shortener/internal/services"
+	// "github.com/darkseear/shortener/internal/storage"
 )
 
 type Producer struct {
@@ -84,7 +85,7 @@ func (c *Consumer) Close() error {
 	return c.file.Close()
 }
 
-func MemoryFileSave(filename string, m *storage.MemoryStorage) error {
+func MemoryFileSave(filename string, m *MemoryStorage) error {
 
 	Producer, err := NewProducer(filename)
 	if err != nil {

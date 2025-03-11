@@ -84,7 +84,7 @@ func (r *Router) GetURL() http.HandlerFunc {
 			return
 		}
 
-		count, err := r.Store.GetOriginalURL(paramURLID, r.Cfg, userID)
+		count, err := r.Store.GetOriginalURL(paramURLID, userID)
 		if err == nil && count == "GoneStatus" {
 			res.WriteHeader(http.StatusGone)
 			return
@@ -117,7 +117,7 @@ func (r *Router) AddURL() http.HandlerFunc {
 		}
 
 		res.Header().Set("Content-Type", "text/plain")
-		short, status := r.Store.ShortenURL(strURL, r.Cfg, userID)
+		short, status := r.Store.ShortenURL(strURL, userID)
 		res.WriteHeader(status)
 		res.Write([]byte(r.Cfg.URL + "/" + short))
 	}
@@ -139,7 +139,7 @@ func (r *Router) Shorten() http.HandlerFunc {
 			return
 		}
 
-		shortenURL, status := r.Store.ShortenURL(longURL, r.Cfg, userID)
+		shortenURL, status := r.Store.ShortenURL(longURL, userID)
 		shortenJSON := models.ShortenJSON{Result: r.Cfg.URL + "/" + shortenURL}
 
 		if err := writeJSON(res, status, shortenJSON); err != nil {
@@ -160,7 +160,7 @@ func (r *Router) ShortenBatch() http.HandlerFunc {
 
 		var batchShortenJSON []models.BatchShortenJSON
 		for _, item := range batchLongJSON {
-			shortenURL, _ := r.Store.ShortenURL(item.LongJSON, r.Cfg, userID)
+			shortenURL, _ := r.Store.ShortenURL(item.LongJSON, userID)
 			batchShortenJSON = append(batchShortenJSON, models.BatchShortenJSON{
 				CorrelationID: item.CorrelationID,
 				ShortJSON:     r.Cfg.URL + "/" + shortenURL,
