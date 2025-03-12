@@ -5,12 +5,13 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"go.uber.org/zap"
+
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/gzip"
 	"github.com/darkseear/shortener/internal/handlers"
 	"github.com/darkseear/shortener/internal/logger"
-	"github.com/darkseear/shortener/internal/services"
-	"go.uber.org/zap"
+	"github.com/darkseear/shortener/internal/storage"
 )
 
 func main() {
@@ -29,7 +30,7 @@ func run() error {
 		return err
 	}
 
-	store, err := services.NewStore(config)
+	storeTwo, err := storage.New(config)
 	if err != nil {
 		logger.Log.Error("Error store created")
 		return err
@@ -45,11 +46,12 @@ func run() error {
 	}
 
 	if config.DatabaseDSN != "" {
-		store.CreateTableDB(context.Background())
+		storeTwo.CreateTableDB(context.Background())
 	}
 
 	//router chi
-	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config, store).Handle)))
+	// r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config, store).Handle)))
+	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config, storeTwo).Handle)))
 
 	logger.Log.Info("Running server", zap.String("address", config.Address))
 	return http.ListenAndServe(config.Address, r)

@@ -21,3 +21,15 @@ type BatchShortenJSON struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortJSON     string `json:"short_url"`
 }
+
+type URLPair struct {
+	ShortURL string `json:"short_url"`
+	LongURL  string `json:"original_url"`
+}
+
+type DBUrlShorten struct {
+	ShortURL    string `json:"short_url"`
+	LongURL     string `json:"original_url"`
+	UserID      string `json:"user_id"`
+	DeletedFlag bool   `json:"is_deleted"`
+}
