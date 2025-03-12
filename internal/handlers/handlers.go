@@ -202,7 +202,7 @@ func (r *Router) ListURL() http.HandlerFunc {
 			return
 		}
 
-		urls, err := r.Store.GetOriginalURLByUserID(r.Cfg, userID)
+		urls, err := r.Store.GetOriginalURLByUserID(userID)
 		if err != nil {
 			res.WriteHeader(http.StatusInternalServerError)
 			return
@@ -233,7 +233,7 @@ func (r *Router) DeleteURL() http.HandlerFunc {
 			return
 		}
 
-		err := r.Store.DeleteURLByUserID(urlsToDelete, r.Cfg, userID)
+		err := r.Store.DeleteURLByUserID(urlsToDelete, userID)
 		if err != nil {
 			res.WriteHeader(http.StatusInternalServerError)
 			logger.Log.Error("Delete error", zap.Error(err))

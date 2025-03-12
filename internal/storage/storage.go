@@ -15,8 +15,8 @@ import (
 type Storage interface {
 	ShortenURL(longURL string, userID string) (string, int)
 	GetOriginalURL(shortURL string, userID string) (string, error)
-	GetOriginalURLByUserID(cfg *config.Config, userID string) ([]models.URLPair, error)
-	DeleteURLByUserID(shortURL []string, cfg *config.Config, userID string) error
+	GetOriginalURLByUserID(userID string) ([]models.URLPair, error)
+	DeleteURLByUserID(shortURL []string, userID string) error
 	CreateTableDB(ctx context.Context) error
 }
 
@@ -33,7 +33,7 @@ func New(config *config.Config) (Storage, error) {
 	}
 	if config.MemoryFile != "" {
 		logger.Log.Info("Create storage MemoryFile")
-		return services.NewMemoryStorage(config), nil
+		return services.NewFileStore(config.MemoryFile, config), nil
 	}
 
 	logger.Log.Info("Create storage Memory")

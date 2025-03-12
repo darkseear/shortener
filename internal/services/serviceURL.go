@@ -22,24 +22,10 @@ import (
 
 const sizeURL int64 = 8
 
+// memory
 type MemoryStorage struct {
 	Memory map[string]string
 	cfg    *config.Config
-}
-
-// CreateTableDB implements storage.Storage.
-func (m *MemoryStorage) CreateTableDB(ctx context.Context) error {
-	panic("unimplemented")
-}
-
-// DeleteURLByUserID implements storage.Storage.
-func (m *MemoryStorage) DeleteURLByUserID(shortURL []string, cfg *config.Config, userID string) error {
-	panic("unimplemented")
-}
-
-// GetOriginalURLByUserID implements storage.Storage.
-func (m *MemoryStorage) GetOriginalURLByUserID(cfg *config.Config, userID string) ([]models.URLPair, error) {
-	panic("unimplemented")
 }
 
 func NewMemoryStorage(cfg *config.Config) *MemoryStorage {
@@ -47,15 +33,40 @@ func NewMemoryStorage(cfg *config.Config) *MemoryStorage {
 		Memory: make(map[string]string), cfg: cfg}
 }
 
-type FileStore struct {
-	File string
-	cfg  *config.Config
+func (m *MemoryStorage) GetOriginalURL(shortURL string, userID string) (string, error) {
+	logger.Log.Info("start get long url memory")
+	count, ok := m.Memory[shortURL]
+	if !ok {
+		return "", fmt.Errorf("error short")
+	}
+	logger.Log.Info("Get url from storage", zap.String("shortURL", shortURL), zap.String("originalURL", count))
+	return count, nil
 }
 
-func NewFileStore(file string, cfg *config.Config) *FileStore {
-	return &FileStore{File: file, cfg: cfg}
+func (m *MemoryStorage) ShortenURL(longURL string, userID string) (string, int) {
+	shortURL := GenerateShortURL(sizeURL)
+	m.Memory[shortURL] = longURL
+	logger.Log.Info("Add in memory storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
+	return shortURL, http.StatusCreated
 }
 
+// Надо как то изв=бавиться от этих действий, может быть интерфейс отдельный написать для каждого стора, с переиспользованием основного как то .
+func (m *MemoryStorage) CreateTableDB(ctx context.Context) error {
+	panic("unimplemented")
+}
+
+func (m *MemoryStorage) DeleteURLByUserID(shortURL []string, userID string) error {
+	panic("unimplemented")
+}
+
+func (m *MemoryStorage) GetOriginalURLByUserID(userID string) ([]models.URLPair, error) {
+	panic("unimplemented")
+}
+
+//
+//end memory
+
+// db
 type DBStorage struct {
 	DB  *sql.DB
 	cfg *config.Config
@@ -131,7 +142,7 @@ func (d *DBStorage) ShortenURL(longURL string, userID string) (string, int) {
 	return shortURL, http.StatusCreated
 }
 
-func (d *DBStorage) GetOriginalURLByUserID(cfg *config.Config, userID string) ([]models.URLPair, error) {
+func (d *DBStorage) GetOriginalURLByUserID(userID string) ([]models.URLPair, error) {
 	logger.Log.Info("start get long url db")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -152,7 +163,7 @@ func (d *DBStorage) GetOriginalURLByUserID(cfg *config.Config, userID string) ([
 				logger.Log.Error("GetURL scan error", zap.Error(err))
 				return urls, err
 			}
-			urls = append(urls, models.URLPair{ShortURL: "http://" + cfg.Address + "/" + OURL, LongURL: URL})
+			urls = append(urls, models.URLPair{ShortURL: "http://" + d.cfg.Address + "/" + OURL, LongURL: URL})
 		}
 		if err := rows.Err(); err != nil {
 			logger.Log.Error("GetURL rows error", zap.Error(err))
@@ -163,9 +174,9 @@ func (d *DBStorage) GetOriginalURLByUserID(cfg *config.Config, userID string) ([
 	return urls, nil
 }
 
-func (d *DBStorage) DeleteURLByUserID(shortURL []string, cfg *config.Config, userID string) error {
+func (d *DBStorage) DeleteURLByUserID(shortURL []string, userID string) error {
 	logger.Log.Info("start delete url")
-	if cfg.DatabaseDSN != "" {
+	if d.cfg.DatabaseDSN != "" {
 		logger.Log.Info("start delete url db")
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
@@ -204,6 +215,18 @@ func (d *DBStorage) CreateTableDB(ctx context.Context) error {
 	return nil
 }
 
+//end db
+
+// file
+type FileStore struct {
+	File string
+	cfg  *config.Config
+}
+
+func NewFileStore(file string, cfg *config.Config) *FileStore {
+	return &FileStore{File: file, cfg: cfg}
+}
+
 func (f *FileStore) GetOriginalURL(shortURL string, userID string) (string, error) {
 	logger.Log.Info("start get long url memory file")
 	c, err := NewConsumer(f.cfg.MemoryFile)
@@ -222,9 +245,9 @@ func (f *FileStore) GetOriginalURL(shortURL string, userID string) (string, erro
 	return count, nil
 }
 
-func (f *FileStore) ShortenURL(longURL string, cfg *config.Config) (string, int) {
+func (f *FileStore) ShortenURL(longURL string, userID string) (string, int) {
 	shortURL := GenerateShortURL(sizeURL)
-	p, err := NewProducer(cfg.MemoryFile)
+	p, err := NewProducer(f.cfg.MemoryFile)
 	if err != nil {
 		logger.Log.Error("producer error", zap.Error(err))
 		panic(err)
@@ -236,23 +259,23 @@ func (f *FileStore) ShortenURL(longURL string, cfg *config.Config) (string, int)
 	return shortURL, http.StatusCreated
 }
 
-func (m *MemoryStorage) GetOriginalURL(shortURL string, userID string) (string, error) {
-	logger.Log.Info("start get long url memory")
-	count, ok := m.Memory[shortURL]
-	if !ok {
-		return "", fmt.Errorf("error short")
-	}
-	logger.Log.Info("Get url from storage", zap.String("shortURL", shortURL), zap.String("originalURL", count))
-	return count, nil
+// точно так же как с мемори
+func (f *FileStore) CreateTableDB(ctx context.Context) error {
+	panic("unimplemented")
 }
 
-func (m *MemoryStorage) ShortenURL(longURL string, userID string) (string, int) {
-	shortURL := GenerateShortURL(sizeURL)
-	m.Memory[shortURL] = longURL
-	logger.Log.Info("Add in memory storage", zap.String("shortURL", shortURL), zap.String("longURL", longURL))
-	return shortURL, http.StatusCreated
+func (f *FileStore) DeleteURLByUserID(shortURL []string, userID string) error {
+	panic("unimplemented")
 }
 
+func (f *FileStore) GetOriginalURLByUserID(userID string) ([]models.URLPair, error) {
+	panic("unimplemented")
+}
+
+//
+//end file
+
+// генератор короткого адреса, возможно надо сосздать папку хелперсов и туда его
 func GenerateShortURL(i int64) string {
 	b := make([]byte, i)
 	_, err := rand.Read(b)

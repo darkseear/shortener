@@ -91,7 +91,6 @@ func TestAddURL(t *testing.T) {
 			DatabaseDSN: "",
 		},
 	}
-	// config := config.New()
 	store, err := storage.New(lc.config)
 	if err != nil {
 		logger.Log.Error("Error created store")
