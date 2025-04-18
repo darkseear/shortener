@@ -15,15 +15,21 @@ type Config struct {
 }
 
 func New() *Config {
-	var config Config
+	config := Config{
+		Address:     "localhost:8080",
+		URL:         "http://localhost:8080",
+		LogLevel:    "info",
+		MemoryFile:  "memory.log",
+		DatabaseDSN: "host=localhost user=postgres password=1234567890 dbname=shorten sslmode=disable",
+		SecretKey:   "secretkey",
+	}
 
-	flag.StringVar(&config.Address, "a", "localhost:8080", "server url")
-	flag.StringVar(&config.URL, "b", "http://localhost:8080", "last url")
-	flag.StringVar(&config.LogLevel, "l", "info", "log level")
-	flag.StringVar(&config.MemoryFile, "f", "memory.log", "path storage file")
-	// flag.StringVar(&config.DatabaseDSN, "d", "host=localhost user=postgres password=1234567890 dbname=shorten sslmode=disable", "Database DSN")
+	flag.StringVar(&config.Address, "a", "", "server url")
+	flag.StringVar(&config.URL, "b", "", "last url")
+	flag.StringVar(&config.LogLevel, "l", "", "log level")
+	flag.StringVar(&config.MemoryFile, "f", "", "path storage file")
 	flag.StringVar(&config.DatabaseDSN, "d", "", "Database DSN")
-	flag.StringVar(&config.SecretKey, "s", "secretkey", "Key for JWT")
+	flag.StringVar(&config.SecretKey, "s", "", "Key for JWT")
 
 	flag.Parse()
 
