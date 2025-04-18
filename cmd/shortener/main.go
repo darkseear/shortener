@@ -51,6 +51,15 @@ func run() error {
 		storeTwo.CreateTableDB(context.Background())
 	}
 
+	// Запуск отдельного HTTP-сервера для pprof
+	go func() {
+		pprofAddr := ":8081"
+		logger.Log.Info("Starting pprof server", zap.String("address", pprofAddr))
+		if err := http.ListenAndServe(pprofAddr, nil); err != nil {
+			logger.Log.Error("Error starting pprof server", zap.Error(err))
+		}
+	}()
+
 	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config, storeTwo).Handle)))
 	logger.Log.Info("Running server", zap.String("address", config.Address))
 	return http.ListenAndServe(config.Address, r)
