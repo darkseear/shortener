@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"path/filepath"
 
+	_ "net/http/pprof"
+
 	"go.uber.org/zap"
 
 	"github.com/darkseear/shortener/internal/config"
@@ -49,10 +51,7 @@ func run() error {
 		storeTwo.CreateTableDB(context.Background())
 	}
 
-	//router chi
-	// r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config, store).Handle)))
 	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config, storeTwo).Handle)))
-
 	logger.Log.Info("Running server", zap.String("address", config.Address))
 	return http.ListenAndServe(config.Address, r)
 }
