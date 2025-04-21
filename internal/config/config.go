@@ -16,11 +16,12 @@ type Config struct {
 
 func New() *Config {
 	config := Config{
-		Address:     "localhost:8080",
-		URL:         "http://localhost:8080",
-		LogLevel:    "info",
-		MemoryFile:  "memory.log",
-		DatabaseDSN: "host=localhost user=postgres password=1234567890 dbname=shorten sslmode=disable",
+		Address:    "localhost:8080",
+		URL:        "http://localhost:8080",
+		LogLevel:   "info",
+		MemoryFile: "memory.log",
+		// DatabaseDSN: "host=localhost user=postgres password=1234567890 dbname=shorten sslmode=disable",
+		DatabaseDSN: "",
 		SecretKey:   "secretkey",
 	}
 
