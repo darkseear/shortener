@@ -112,7 +112,7 @@ func (r *Router) AddURL() http.HandlerFunc {
 
 		strURL := string(body)
 		if strURL == "" {
-			res.WriteHeader(http.StatusCreated)
+			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
