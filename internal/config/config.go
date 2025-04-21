@@ -24,32 +24,28 @@ func New() *Config {
 		SecretKey:   "secretkey",
 	}
 
-	flag.StringVar(&config.Address, "a", "", "server url")
-	flag.StringVar(&config.URL, "b", "", "last url")
-	flag.StringVar(&config.LogLevel, "l", "", "log level")
-	flag.StringVar(&config.MemoryFile, "f", "", "path storage file")
-	flag.StringVar(&config.DatabaseDSN, "d", "", "Database DSN")
-	flag.StringVar(&config.SecretKey, "s", "", "Key for JWT")
+	flag.StringVar(&config.Address, "a", config.Address, "server url")
+	flag.StringVar(&config.URL, "b", config.URL, "last url")
+	flag.StringVar(&config.LogLevel, "l", config.LogLevel, "log level")
+	flag.StringVar(&config.MemoryFile, "f", config.MemoryFile, "path storage file")
+	flag.StringVar(&config.DatabaseDSN, "d", config.DatabaseDSN, "Database DSN")
+	flag.StringVar(&config.SecretKey, "s", config.SecretKey, "Key for JWT")
 
 	flag.Parse()
 
-	if val, state := os.LookupEnv("SERVER_ADDRESS"); state {
-		config.Address = val
+	envVars := map[string]*string{
+		"SERVER_ADDRESS":    &config.Address,
+		"BASE_URL":          &config.URL,
+		"LOG_LEVEL":         &config.LogLevel,
+		"FILE_STORAGE_PATH": &config.MemoryFile,
+		"DATABASE_DSN":      &config.DatabaseDSN,
+		"SECRET_KEY":        &config.SecretKey,
 	}
-	if val, state := os.LookupEnv("BASE_URL"); state {
-		config.URL = val
-	}
-	if val, state := os.LookupEnv("LOG_LEVEL"); state {
-		config.LogLevel = val
-	}
-	if val, state := os.LookupEnv("FILE_STORAGE_PATH"); state {
-		config.MemoryFile = val
-	}
-	if val, state := os.LookupEnv("DATABASE_DSN"); state {
-		config.DatabaseDSN = val
-	}
-	if val, state := os.LookupEnv("SECRET_KEY"); state {
-		config.SecretKey = val
+
+	for key, ptr := range envVars {
+		if val, state := os.LookupEnv(key); state {
+			*ptr = val
+		}
 	}
 
 	return &config
