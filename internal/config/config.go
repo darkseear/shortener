@@ -20,7 +20,7 @@ func New() *Config {
 		URL:         "http://localhost:8080",
 		LogLevel:    "info",
 		MemoryFile:  "memory.log",
-		DatabaseDSN: "",
+		DatabaseDSN: "host=localhost user=postgres password=1234567890 dbname=shorten sslmode=disable",
 		SecretKey:   "secretkey",
 	}
 
