@@ -6,12 +6,12 @@ import (
 )
 
 type Config struct {
-	Address     string
-	URL         string
-	LogLevel    string
-	MemoryFile  string
-	DatabaseDSN string
-	SecretKey   string
+	Address     string `env:"SERVER_ADDRESS"`
+	URL         string `env:"BASE_URL"`
+	LogLevel    string `env:"LOG_LEVEL"`
+	MemoryFile  string `env:"FILE_STORAGE_PATH"`
+	DatabaseDSN string `env:"DATABASE_DSN"`
+	SecretKey   string `env:"SECRET_KEY"`
 }
 
 func New() *Config {
