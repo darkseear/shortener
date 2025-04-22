@@ -7,8 +7,12 @@ import (
 	"go.uber.org/zap"
 )
 
+// Log - синглтон для логирования.
 var Log *zap.Logger = zap.NewNop()
 
+// Initialize инициализирует логгер с заданным уровнем логирования.
+//
+// Уровень логирования может быть "debug", "info", "warn", "error", "dpanic", "panic" или "fatal".
 func Initialize(level string) error {
 	// преобразуем текстовый уровень логирования в zap.AtomicLevel
 	lvl, err := zap.ParseAtomicLevel(level)
