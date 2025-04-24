@@ -1,6 +1,6 @@
 package models
 
-//ShortenJSON - структура для хранения короткой ссылки.
+// ShortenJSON - структура для хранения короткой ссылки.
 type ShortenJSON struct {
 	Result string `json:"result"`
 }
@@ -10,19 +10,19 @@ type LongJSON struct {
 	URL string `json:"url"`
 }
 
-//MemoryFile - структура для хранения короткой и длинной ссылки в памяти.
+// MemoryFile - структура для хранения короткой и длинной ссылки в памяти.
 type MemoryFile struct {
 	ShortURL string `json:"shortURL"`
 	LongURL  string `json:"longURL"`
 }
 
-//BatchLongJSON - структура для хранения длинной ссылки в батче.
+// BatchLongJSON - структура для хранения длинной ссылки в батче.
 type BatchLongJSON struct {
 	CorrelationID string `json:"correlation_id"`
 	LongJSON      string `json:"original_url"`
 }
 
-//BatchShortenJSON - структура для хранения короткой ссылки в батче.
+// BatchShortenJSON - структура для хранения короткой ссылки в батче.
 type BatchShortenJSON struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortJSON     string `json:"short_url"`
