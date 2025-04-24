@@ -12,6 +12,7 @@ import (
 	"github.com/darkseear/shortener/internal/services"
 )
 
+// Storage - интерфейс для работы с хранилищем.
 type Storage interface {
 	ShortenURL(longURL string, userID string) (string, int)
 	GetOriginalURL(shortURL string, userID string) (string, error)
@@ -20,6 +21,8 @@ type Storage interface {
 	CreateTableDB(ctx context.Context) error
 }
 
+// New - функция для создания нового хранилища.
+// В зависимости от конфигурации создается либо хранилище в памяти, либо в файле, либо в базе данных.
 func New(config *config.Config) (Storage, error) {
 
 	if config.DatabaseDSN != "" {

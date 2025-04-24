@@ -5,6 +5,7 @@ import (
 	"os"
 )
 
+// Config структура конфигурации приложения.
 type Config struct {
 	Address     string `env:"SERVER_ADDRESS"`
 	URL         string `env:"BASE_URL"`
@@ -14,6 +15,7 @@ type Config struct {
 	SecretKey   string `env:"SECRET_KEY"`
 }
 
+// New - конструктор конфига (флаги , енв, дефолт)
 func New() *Config {
 	config := Config{
 		Address:    "localhost:8080",

@@ -4,10 +4,11 @@ import (
 	"fmt"
 )
 
-func Example() {
+func ExampleInitialize() {
 	err := Initialize("debug")
+	err = Initialize("info")
 	if err != nil {
-		fmt.Errorf("ups logger")
+		fmt.Print(err)
 	}
 
 	Log.Info("info")

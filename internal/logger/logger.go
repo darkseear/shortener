@@ -47,6 +47,7 @@ type (
 	}
 )
 
+// Write - реализуем интерфейс http.ResponseWriter, захват данных ответа.
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	// записываем ответ, используя оригинальный http.ResponseWriter
 	size, err := r.ResponseWriter.Write(b)
@@ -54,12 +55,14 @@ func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	return size, err
 }
 
+// WriteHeader - реализуем интерфейс http.ResponseWriter, захват статуса.
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	// записываем код статуса, используя оригинальный http.ResponseWriter
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.responseData.status = statusCode // захватываем код статуса
 }
 
+// WhithLogging - обертка для http.Handler, которая добавляет логирование запросов и ответов.
 func WhithLogging(h http.Handler) http.HandlerFunc {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

@@ -10,14 +10,18 @@ import (
 	"github.com/darkseear/shortener/internal/logger"
 )
 
+// AuthService - структура для работы с авторизацией.
 type AuthService struct {
 	secretKey string
 }
 
+// NewAuthService - конструктор для создания нового AuthService.
 func NewAuthService(secretKey string) *AuthService {
 	return &AuthService{secretKey: secretKey}
 }
 
+// GenerateToken - метод для генерации JWT токена.
+// Он принимает userID и возвращает сгенерированный токен или ошибку.
 func (s *AuthService) GenerateToken(userID string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"userID": userID,
@@ -32,6 +36,8 @@ func (s *AuthService) GenerateToken(userID string) (string, error) {
 	return tokenString, nil
 }
 
+// ValidateToken - метод для проверки JWT токена.
+// Он принимает строку токена и возвращает userID, если токен действителен, или ошибку.
 func (s *AuthService) ValidateToken(tokenString string) (string, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -52,6 +58,8 @@ func (s *AuthService) ValidateToken(tokenString string) (string, error) {
 	return "", errors.New("invalid token")
 }
 
+// SetCookie - метод для установки куки с токеном.
+// Он принимает http.ResponseWriter и userID, генерирует токен и устанавливает его в куки.
 func (s *AuthService) SetCookie(w http.ResponseWriter, userID string) string {
 	tokenString, err := s.GenerateToken(userID)
 	if err != nil {
@@ -67,6 +75,8 @@ func (s *AuthService) SetCookie(w http.ResponseWriter, userID string) string {
 	return userID
 }
 
+// IssueCookie - метод для проверки наличия куки и его валидности.
+// Если куки нет или он не валиден, то генерируется новый токен и устанавливается в куки.
 func (s *AuthService) IssueCookie(w http.ResponseWriter, r *http.Request, userID string) string {
 	cookie, err := r.Cookie("auth_token")
 	if err != nil || cookie == nil {

@@ -7,29 +7,35 @@ import (
 	"strings"
 )
 
-// compressWriter реализует интерфейс http.ResponseWriter и позволяет прозрачно для сервера
-// сжимать передаваемые данные и выставлять правильные HTTP-заголовки
-type compressWriter struct {
+// СompressWriter реализует интерфейс http.ResponseWriter и позволяет прозрачно для сервера.
+// Cжимать передаваемые данные и выставлять правильные HTTP-заголовки.
+type СompressWriter struct {
 	w  http.ResponseWriter
 	zw *gzip.Writer
 }
 
-func newCompressWriter(w http.ResponseWriter) *compressWriter {
-	return &compressWriter{
+// NewСompressWriter создает новый экземпляр СompressWriter.
+// Он принимает http.ResponseWriter и создает новый gzip.Writer, связанный с ним.
+func NewСompressWriter(w http.ResponseWriter) *СompressWriter {
+	return &СompressWriter{
 		w:  w,
 		zw: gzip.NewWriter(w),
 	}
 }
 
-func (c *compressWriter) Header() http.Header {
+// Header возвращает заголовки ответа.
+func (c *СompressWriter) Header() http.Header {
 	return c.w.Header()
 }
 
-func (c *compressWriter) Write(p []byte) (int, error) {
+// Write записывает данные в gzip.Writer и отправляет их в http.ResponseWriter.
+// Возвращает количество записанных байт и ошибку, если она произошла.
+func (c *СompressWriter) Write(p []byte) (int, error) {
 	return c.zw.Write(p)
 }
 
-func (c *compressWriter) WriteHeader(statusCode int) {
+// / WriteHeader устанавливает код состояния ответа и добавляет заголовок Content-Encoding.
+func (c *СompressWriter) WriteHeader(statusCode int) {
 	if statusCode < 308 {
 		c.w.Header().Set("Content-Encoding", "gzip")
 	}
@@ -37,40 +43,49 @@ func (c *compressWriter) WriteHeader(statusCode int) {
 }
 
 // Close закрывает gzip.Writer и досылает все данные из буфера.
-func (c *compressWriter) Close() error {
+func (c *СompressWriter) Close() error {
 	return c.zw.Close()
 }
 
-// compressReader реализует интерфейс io.ReadCloser и позволяет прозрачно для сервера
-// декомпрессировать получаемые от клиента данные
-type compressReader struct {
+// CompressReader реализует интерфейс io.ReadCloser и позволяет прозрачно для сервера
+// декомпрессировать получаемые от клиента данные.
+type CompressReader struct {
 	r  io.ReadCloser
 	zr *gzip.Reader
 }
 
-func newCompressReader(r io.ReadCloser) (*compressReader, error) {
+// NewCompressReader создает новый экземпляр CompressReader.
+// Он принимает io.ReadCloser и создает новый gzip.Reader, связанный с ним.
+// Возвращает указатель на CompressReader и ошибку, если она произошла.
+func NewCompressReader(r io.ReadCloser) (*CompressReader, error) {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, err
 	}
 
-	return &compressReader{
+	return &CompressReader{
 		r:  r,
 		zr: zr,
 	}, nil
 }
 
-func (c compressReader) Read(p []byte) (n int, err error) {
+// Read читает данные из gzip.Reader и записывает их в буфер p.
+// Возвращает количество прочитанных байт и ошибку, если она произошла.
+func (c CompressReader) Read(p []byte) (n int, err error) {
 	return c.zr.Read(p)
 }
 
-func (c *compressReader) Close() error {
+// / Close закрывает gzip.Reader и оригинальный io.ReadCloser.
+// Возвращает ошибку, если она произошла.
+func (c *CompressReader) Close() error {
 	if err := c.r.Close(); err != nil {
 		return err
 	}
 	return c.zr.Close()
 }
 
+// GzipMiddleware - обертка для http.Handler, которая добавляет поддержку сжатия и декомпрессии данных в формате gzip.
+// Она проверяет, поддерживает ли клиент сжатие данных и отправляет их в сжатом виде, если это возможно.
 func GzipMiddleware(h http.Handler) http.HandlerFunc {
 	gzipFn := func(w http.ResponseWriter, r *http.Request) {
 		ow := w
@@ -83,7 +98,7 @@ func GzipMiddleware(h http.Handler) http.HandlerFunc {
 		supportTextHTML := strings.Contains(contentType, "text/html")
 
 		if supportsGzip && (supportApplicationJSON || supportTextHTML) {
-			cw := newCompressWriter(w)
+			cw := NewСompressWriter(w)
 			ow = cw
 			defer cw.Close()
 		}
@@ -94,7 +109,7 @@ func GzipMiddleware(h http.Handler) http.HandlerFunc {
 
 		if sendsGzip {
 			// оборачиваем тело запроса в io.Reader с поддержкой декомпрессии
-			cr, err := newCompressReader(r.Body)
+			cr, err := NewCompressReader(r.Body)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
