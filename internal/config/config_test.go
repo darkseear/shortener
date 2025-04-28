@@ -1,6 +1,7 @@
 package config
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"testing"
@@ -9,6 +10,11 @@ import (
 )
 
 func TestConfig(t *testing.T) {
+	// Сброс состояния флагов перед тестом
+	defer func() {
+		flag.CommandLine = flag.NewFlagSet("", flag.ContinueOnError)
+	}()
+
 	cfg := New()
 	fmt.Printf("Running  %s, %s, %s", cfg.Address, cfg.URL, cfg.MemoryFile)
 	assert.Equal(t, "localhost:8080", cfg.Address)
@@ -20,15 +26,9 @@ func TestConfig(t *testing.T) {
 }
 
 func TestConfigWithEnv(t *testing.T) {
-	// Установка переменных окружения для теста
-	os.Setenv("SERVER_ADDRESS", "localhost:9090")
-	os.Setenv("BASE_URL", "http://localhost:9090")
-	os.Setenv("LOG_LEVEL", "debug")
-	os.Setenv("FILE_STORAGE_PATH", "test_memory.log")
-	os.Setenv("DATABASE_DSN", "test_dsn")
-	os.Setenv("SECRET_KEY", "test_secret")
-
+	// Сброс состояния флагов и переменных окружения
 	defer func() {
+		flag.CommandLine = flag.NewFlagSet("", flag.ContinueOnError)
 		os.Unsetenv("SERVER_ADDRESS")
 		os.Unsetenv("BASE_URL")
 		os.Unsetenv("LOG_LEVEL")
@@ -36,6 +36,14 @@ func TestConfigWithEnv(t *testing.T) {
 		os.Unsetenv("DATABASE_DSN")
 		os.Unsetenv("SECRET_KEY")
 	}()
+
+	// Установка переменных окружения для теста
+	os.Setenv("SERVER_ADDRESS", "localhost:9090")
+	os.Setenv("BASE_URL", "http://localhost:9090")
+	os.Setenv("LOG_LEVEL", "debug")
+	os.Setenv("FILE_STORAGE_PATH", "test_memory.log")
+	os.Setenv("DATABASE_DSN", "test_dsn")
+	os.Setenv("SECRET_KEY", "test_secret")
 
 	cfg := New()
 
