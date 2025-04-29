@@ -21,12 +21,15 @@ import (
 	"github.com/darkseear/shortener/internal/storage"
 )
 
+// Router - структура маршрутизатора.
 type Router struct {
 	Handle *chi.Mux
 	Store  storage.Storage
 	Cfg    *config.Config
 }
 
+// Routers - функция создания маршрутизатора.
+// Принимает конфигурацию и хранилище в качестве аргументов и возвращает указатель на Router.
 func Routers(cfg *config.Config, store storage.Storage) *Router {
 
 	r := Router{
@@ -46,6 +49,7 @@ func Routers(cfg *config.Config, store storage.Storage) *Router {
 	return &r
 }
 
+// / Handlers - интерфейс, который определяет методы для обработки HTTP-запросов.
 type Handlers interface {
 	GetUrl() http.HandlerFunc
 	AddURL() http.HandlerFunc
@@ -55,26 +59,30 @@ type Handlers interface {
 	ListURL() http.HandlerFunc
 }
 
-func readJSON(req *http.Request, v interface{}) error {
+// ReadJSON - функция для чтения JSON-данных из HTTP-запроса.
+func ReadJSON(req *http.Request, v interface{}) error {
 	dec := json.NewDecoder(req.Body)
 	defer req.Body.Close()
 	return dec.Decode(v)
 }
 
-func writeJSON(res http.ResponseWriter, status int, v interface{}) error {
+// WriteJSON - функция для записи JSON-данных в HTTP-ответ.
+func WriteJSON(res http.ResponseWriter, status int, v interface{}) error {
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(status)
 	enc := json.NewEncoder(res)
 	return enc.Encode(v)
 }
 
-func generateRandoUserID() string {
+// GenerateRandoUserID - функция для генерации случайного идентификатора пользователя.
+func GenerateRandoUserID() string {
 	return fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
 }
 
+// GetURL - функция для обработки HTTP-запросов на получение оригинального URL по короткому идентификатору.
 func (r *Router) GetURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
+		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, GenerateRandoUserID())
 		path := strings.TrimSuffix(strings.TrimPrefix(req.URL.Path, "/"), "/")
 		parts := strings.Split(path, "/")
 		paramURLID := parts[0]
@@ -99,9 +107,10 @@ func (r *Router) GetURL() http.HandlerFunc {
 	}
 }
 
+// AddURL - функция для обработки HTTP-запросов на добавление нового URL в хранилище.
 func (r *Router) AddURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
+		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, GenerateRandoUserID())
 		body, err := io.ReadAll(req.Body)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
@@ -123,12 +132,13 @@ func (r *Router) AddURL() http.HandlerFunc {
 	}
 }
 
+// / Shorten - функция для обработки HTTP-запросов на сокращение URL.
 func (r *Router) Shorten() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		var longJSON models.LongJSON
-		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
+		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, GenerateRandoUserID())
 
-		if err := readJSON(req, &longJSON); err != nil {
+		if err := ReadJSON(req, &longJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -142,18 +152,19 @@ func (r *Router) Shorten() http.HandlerFunc {
 		shortenURL, status := r.Store.ShortenURL(longURL, userID)
 		shortenJSON := models.ShortenJSON{Result: r.Cfg.URL + "/" + shortenURL}
 
-		if err := writeJSON(res, status, shortenJSON); err != nil {
+		if err := WriteJSON(res, status, shortenJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
 	}
 }
 
+// ShortenBatch - функция для обработки HTTP-запросов на пакетное сокращение URL.
 func (r *Router) ShortenBatch() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
+		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, GenerateRandoUserID())
 		var batchLongJSON []models.BatchLongJSON
-		if err := readJSON(req, &batchLongJSON); err != nil {
+		if err := ReadJSON(req, &batchLongJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -167,13 +178,14 @@ func (r *Router) ShortenBatch() http.HandlerFunc {
 			})
 		}
 
-		if err := writeJSON(res, http.StatusCreated, batchShortenJSON); err != nil {
+		if err := WriteJSON(res, http.StatusCreated, batchShortenJSON); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
 	}
 }
 
+// PingDB - функция для проверки доступности базы данных.
 func (r *Router) PingDB() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		db, errSQL := sql.Open("pgx", r.Cfg.DatabaseDSN)
@@ -194,9 +206,10 @@ func (r *Router) PingDB() http.HandlerFunc {
 	}
 }
 
+// ListURL - функция для обработки HTTP-запросов на получение списка всех URL, добавленных пользователем.
 func (r *Router) ListURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
+		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, GenerateRandoUserID())
 		if userID == "" {
 			res.WriteHeader(http.StatusUnauthorized)
 			return
@@ -211,7 +224,7 @@ func (r *Router) ListURL() http.HandlerFunc {
 			res.WriteHeader(http.StatusNoContent)
 			return
 		}
-		if err := writeJSON(res, http.StatusOK, urls); err != nil {
+		if err := WriteJSON(res, http.StatusOK, urls); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -219,16 +232,17 @@ func (r *Router) ListURL() http.HandlerFunc {
 	}
 }
 
+// DeleteURL - функция для обработки HTTP-запросов на удаление URL, добавленных пользователем.
 func (r *Router) DeleteURL() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, generateRandoUserID())
+		userID := services.NewAuthService(r.Cfg.SecretKey).IssueCookie(res, req, GenerateRandoUserID())
 		if userID == "" {
 			res.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
 		var urlsToDelete []string
-		if err := readJSON(req, &urlsToDelete); err != nil {
+		if err := ReadJSON(req, &urlsToDelete); err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}

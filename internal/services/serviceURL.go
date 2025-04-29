@@ -20,19 +20,25 @@ import (
 	"github.com/darkseear/shortener/internal/models"
 )
 
+// sizeURL - размер короткого адреса.
 const sizeURL int64 = 8
 
-// memory
+// MemoryStorage - структура для хранения в памяти.
+// Используется для тестирования и в случае, если не требуется постоянное хранение данных.
 type MemoryStorage struct {
 	Memory map[string]string
 	cfg    *config.Config
 }
 
+// NewMemoryStorage - конструктор для создания нового экземпляра MemoryStorage.
+// Принимает конфигурацию в качестве параметра и инициализирует память.
 func NewMemoryStorage(cfg *config.Config) *MemoryStorage {
 	return &MemoryStorage{
 		Memory: make(map[string]string), cfg: cfg}
 }
 
+// GetOriginalURL - метод для получения оригинального URL по короткому адресу.
+// Принимает короткий адрес и идентификатор пользователя в качестве параметров.
 func (m *MemoryStorage) GetOriginalURL(shortURL string, userID string) (string, error) {
 	logger.Log.Info("start get long url memory")
 	count, ok := m.Memory[shortURL]
@@ -43,6 +49,8 @@ func (m *MemoryStorage) GetOriginalURL(shortURL string, userID string) (string, 
 	return count, nil
 }
 
+// ShortenURL - метод для сокращения URL.
+// Принимает длинный URL и идентификатор пользователя в качестве параметров.
 func (m *MemoryStorage) ShortenURL(longURL string, userID string) (string, int) {
 	shortURL := GenerateShortURL(sizeURL)
 	m.Memory[shortURL] = longURL
@@ -50,15 +58,20 @@ func (m *MemoryStorage) ShortenURL(longURL string, userID string) (string, int) 
 	return shortURL, http.StatusCreated
 }
 
-// Надо как то изв=бавиться от этих действий, может быть интерфейс отдельный написать для каждого стора, с переиспользованием основного как то .
+// CreateTableDB - метод для создания таблицы в базе данных.
+// В данном случае он не реализован, так как используется только в памяти.
 func (m *MemoryStorage) CreateTableDB(ctx context.Context) error {
 	panic("unimplemented")
 }
 
+// DeleteURLByUserID - метод для удаления URL по идентификатору пользователя.
+// В данном случае он не реализован, так как используется только в памяти.
 func (m *MemoryStorage) DeleteURLByUserID(shortURL []string, userID string) error {
 	panic("unimplemented")
 }
 
+// GetOriginalURLByUserID - метод для получения оригинального URL по идентификатору пользователя.
+// В данном случае он не реализован, так как используется только в памяти.
 func (m *MemoryStorage) GetOriginalURLByUserID(userID string) ([]models.URLPair, error) {
 	panic("unimplemented")
 }
@@ -67,15 +80,20 @@ func (m *MemoryStorage) GetOriginalURLByUserID(userID string) ([]models.URLPair,
 //end memory
 
 // db
+// DBStorage - структура для работы с базой данных.
 type DBStorage struct {
 	DB  *sql.DB
 	cfg *config.Config
 }
 
+// NewDBStorage - конструктор для создания нового экземпляра DBStorage.
+// Принимает указатель на базу данных и конфигурацию в качестве параметров.
 func NewDBStorage(db *sql.DB, cfg *config.Config) *DBStorage {
 	return &DBStorage{DB: db, cfg: cfg}
 }
 
+// GetOriginalURL - метод для получения оригинального URL по короткому адресу.
+// Принимает короткий адрес и идентификатор пользователя в качестве параметров.
 func (d *DBStorage) GetOriginalURL(shortURL string, userID string) (string, error) {
 	logger.Log.Info("start get long url db")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -109,6 +127,8 @@ func (d *DBStorage) GetOriginalURL(shortURL string, userID string) (string, erro
 	return DBUrlShorten.LongURL, nil
 }
 
+// / ShortenURL - метод для сокращения URL.
+// Принимает длинный URL и идентификатор пользователя в качестве параметров.
 func (d *DBStorage) ShortenURL(longURL string, userID string) (string, int) {
 	shortURL := GenerateShortURL(sizeURL)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -142,6 +162,8 @@ func (d *DBStorage) ShortenURL(longURL string, userID string) (string, int) {
 	return shortURL, http.StatusCreated
 }
 
+// GetOriginalURLByUserID - метод для получения оригинального URL по идентификатору пользователя.
+// Принимает идентификатор пользователя в качестве параметра.
 func (d *DBStorage) GetOriginalURLByUserID(userID string) ([]models.URLPair, error) {
 	logger.Log.Info("start get long url db")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -174,6 +196,8 @@ func (d *DBStorage) GetOriginalURLByUserID(userID string) ([]models.URLPair, err
 	return urls, nil
 }
 
+// DeleteURLByUserID - метод для удаления URL по идентификатору пользователя.
+// Принимает короткий адрес и идентификатор пользователя в качестве параметров.
 func (d *DBStorage) DeleteURLByUserID(shortURL []string, userID string) error {
 	logger.Log.Info("start delete url")
 	if d.cfg.DatabaseDSN != "" {
@@ -198,6 +222,9 @@ func (d *DBStorage) DeleteURLByUserID(shortURL []string, userID string) error {
 	return nil
 }
 
+// CreateTableDB - метод для создания таблицы в базе данных.
+// Принимает контекст в качестве параметра.
+// Создает таблицу urls, если она не существует.
 func (d *DBStorage) CreateTableDB(ctx context.Context) error {
 	logger.Log.Info("Create table shorten")
 	query := "CREATE TABLE IF NOT EXISTS urls (" +
@@ -218,15 +245,21 @@ func (d *DBStorage) CreateTableDB(ctx context.Context) error {
 //end db
 
 // file
+// FileStore - структура для работы с файловым хранилищем.
+// Используется для хранения данных в файле.
 type FileStore struct {
 	File string
 	cfg  *config.Config
 }
 
+// NewFileStore - конструктор для создания нового экземпляра FileStore.
+// Принимает путь к файлу и конфигурацию в качестве параметров.
 func NewFileStore(file string, cfg *config.Config) *FileStore {
 	return &FileStore{File: file, cfg: cfg}
 }
 
+// GetOriginalURL - метод для получения оригинального URL по короткому адресу.
+// Принимает короткий адрес и идентификатор пользователя в качестве параметров.
 func (f *FileStore) GetOriginalURL(shortURL string, userID string) (string, error) {
 	logger.Log.Info("start get long url memory file")
 	c, err := NewConsumer(f.cfg.MemoryFile)
@@ -245,6 +278,9 @@ func (f *FileStore) GetOriginalURL(shortURL string, userID string) (string, erro
 	return count, nil
 }
 
+// ShortenURL - метод для сокращения URL.
+// Принимает длинный URL и идентификатор пользователя в качестве параметров.
+// Генерирует короткий адрес и записывает его в файл.
 func (f *FileStore) ShortenURL(longURL string, userID string) (string, int) {
 	shortURL := GenerateShortURL(sizeURL)
 	p, err := NewProducer(f.cfg.MemoryFile)
@@ -259,15 +295,20 @@ func (f *FileStore) ShortenURL(longURL string, userID string) (string, int) {
 	return shortURL, http.StatusCreated
 }
 
-// точно так же как с мемори
+// CreateTableDB - метод для создания таблицы в файловом хранилище.
+// В данном случае он не реализован, так как используется только в памяти.
 func (f *FileStore) CreateTableDB(ctx context.Context) error {
 	panic("unimplemented")
 }
 
+// DeleteURLByUserID - метод для удаления URL по идентификатору пользователя.
+// Принимает короткий адрес и идентификатор пользователя в качестве параметров.
 func (f *FileStore) DeleteURLByUserID(shortURL []string, userID string) error {
 	panic("unimplemented")
 }
 
+// GetOriginalURLByUserID - метод для получения оригинального URL по идентификатору пользователя.
+// Принимает идентификатор пользователя в качестве параметра.
 func (f *FileStore) GetOriginalURLByUserID(userID string) ([]models.URLPair, error) {
 	panic("unimplemented")
 }
@@ -276,6 +317,8 @@ func (f *FileStore) GetOriginalURLByUserID(userID string) ([]models.URLPair, err
 //end file
 
 // генератор короткого адреса, возможно надо сосздать папку хелперсов и туда его
+// GenerateShortURL - функция для генерации короткого адреса.
+// Принимает длину короткого адреса в качестве параметра и возвращает сгенерированный адрес.
 func GenerateShortURL(i int64) string {
 	b := make([]byte, i)
 	_, err := rand.Read(b)
