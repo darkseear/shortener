@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"path/filepath"
 
-	_ "net/http/pprof"
-
 	"go.uber.org/zap"
 
 	"github.com/darkseear/shortener/internal/config"
