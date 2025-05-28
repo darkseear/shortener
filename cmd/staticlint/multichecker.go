@@ -12,8 +12,6 @@ import (
 )
 
 // Добавляем стандартные анализаторы из golang.org/x/tools и добавляем свой.
-//
-//go:generate go mod tidy
 func main() {
 	var analyzers []*analysis.Analyzer
 
