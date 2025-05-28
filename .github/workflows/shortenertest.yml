@@ -59,7 +59,7 @@ jobs:
       - name: Build server binary
         run: |
           cd cmd/shortener
-          go build -buildvcs=false -ldflags="-X main.buildVersion=${{ github.ref_name }} -X main.buildDate=$(date +'%Y-%m-%d_%T') -X main.buildCommit=${{ github.sha }}" - -o shortener
+          go build -buildvcs=false -ldflags="-X main.buildVersion=${{ github.ref_name }} -X main.buildDate=$(date +'%Y-%m-%d_%T') -X main.buildCommit=${{ github.sha }}" -o shortener
 
       - name: "Code increment #1"
         if: |
