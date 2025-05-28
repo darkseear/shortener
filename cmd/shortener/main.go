@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"path/filepath"
 
@@ -12,6 +13,12 @@ import (
 	"github.com/darkseear/shortener/internal/handlers"
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/storage"
+)
+
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
 )
 
 func main() {
@@ -29,6 +36,8 @@ func run() error {
 	if err := logger.Initialize(LogLevel); err != nil {
 		return err
 	}
+
+	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n", buildVersion, buildDate, buildCommit)
 
 	storeTwo, err := storage.New(config)
 	if err != nil {
