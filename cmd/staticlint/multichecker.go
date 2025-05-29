@@ -23,17 +23,15 @@ func main() {
 	)
 
 	for _, v := range stylecheck.Analyzers {
-		if v.Analyzer.Name[0] == 'S' && v.Analyzer.Name[1] == 'A' {
+		name := v.Analyzer.Name
+		if len(name) >= 2 && name[0] == 'S' && name[1] == 'A' {
+			analyzers = append(analyzers, v.Analyzer)
+		}
+		if name == "ST1000" {
 			analyzers = append(analyzers, v.Analyzer)
 		}
 	}
 
-	for _, v := range stylecheck.Analyzers {
-		if v.Analyzer.Name == "ST1000" {
-			analyzers = append(analyzers, v.Analyzer)
-			break
-		}
-	}
 	analyzers = append(analyzers,
 		errcheck.Analyzer, // Проверяет непроверенные ошибки
 	)
