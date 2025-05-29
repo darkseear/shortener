@@ -14,16 +14,20 @@ type Config struct {
 	MemoryFile  string `env:"FILE_STORAGE_PATH"`
 	DatabaseDSN string `env:"DATABASE_DSN"`
 	SecretKey   string `env:"SECRET_KEY"`
+	EnableHTTPS bool   `env:"ENABLE_HTTPS"`
+	PprofAddr   string `env:"PPROF_ADDR"`
 }
 
 var (
-	once          sync.Once
-	flagAddress   string
-	flagURL       string
-	flagLogLevel  string
-	flagFile      string
-	flagDSN       string
-	flagSecretKey string
+	once            sync.Once
+	flagAddress     string
+	flagURL         string
+	flagLogLevel    string
+	flagFile        string
+	flagDSN         string
+	flagSecretKey   string
+	flagEnableHTTPS bool
+	flagPprofAddr   string
 )
 
 // registerFlags инициализирует флаги один раз.
@@ -34,7 +38,9 @@ func registerFlags() {
 		flag.StringVar(&flagLogLevel, "l", "info", "Log level")
 		flag.StringVar(&flagFile, "f", "memory.log", "File storage path")
 		flag.StringVar(&flagDSN, "d", "", "Database DSN")
-		flag.StringVar(&flagSecretKey, "s", "secretkey", "Secret key for JWT")
+		flag.StringVar(&flagSecretKey, "sk", "secretkey", "Secret key for JWT")
+		flag.BoolVar(&flagEnableHTTPS, "s", false, "Enable HTTPS (default: false)")
+		flag.StringVar(&flagPprofAddr, "p", ":8081", "Address for pprof server")
 	})
 }
 
@@ -53,6 +59,8 @@ func New() *Config {
 		MemoryFile:  flagFile,
 		DatabaseDSN: flagDSN,
 		SecretKey:   flagSecretKey,
+		EnableHTTPS: flagEnableHTTPS,
+		PprofAddr:   flagPprofAddr,
 	}
 
 	// Переопределение значений переменными окружения
@@ -70,11 +78,20 @@ func setFromEnv(cfg *Config) {
 		"FILE_STORAGE_PATH": &cfg.MemoryFile,
 		"DATABASE_DSN":      &cfg.DatabaseDSN,
 		"SECRET_KEY":        &cfg.SecretKey,
+		"PPROF_ADDR":        &cfg.PprofAddr,
 	}
 
 	for env, ptr := range envVars {
 		if val, ok := os.LookupEnv(env); ok {
 			*ptr = val
+		}
+	}
+
+	if val, ok := os.LookupEnv("ENABLE_HTTPS"); ok {
+		if val == "true" || val == "1" {
+			cfg.EnableHTTPS = true
+		} else {
+			cfg.EnableHTTPS = false
 		}
 	}
 }
