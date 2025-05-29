@@ -22,6 +22,9 @@ type Config struct {
 	PprofAddr   string `env:"PPROF_ADDR"`
 	ConfigFile  string `env:"CONFIG"`
 }
+
+// ConfigFile структура для хранения конфигурации из файла.
+// Используется для загрузки параметров из JSON-файла конфигурации.
 type ConfigFile struct {
 	Address     string `json:"address"`      // -a /SERVER_ADDRESS
 	URL         string `json:"url"`          // -b /BASE_URL
@@ -140,6 +143,10 @@ func setFromEnv(cfg *Config) {
 		cfg.EnableHTTPS = configFile.EnableHTTPS
 	}
 }
+
+// configFormFile читает конфигурацию из файла, если указан путь к файлу.
+// Если файл не указан, возвращает пустую структуру ConfigFile.
+// Если файл указан, но не может быть прочитан или распарсен, возвращает ошибку.
 
 func (c *Config) configFormFile() (ConfigFile, error) {
 	var configFile ConfigFile
