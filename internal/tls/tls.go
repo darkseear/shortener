@@ -16,6 +16,8 @@ import (
 	"github.com/darkseear/shortener/internal/logger"
 )
 
+// CrtFile и KeyFile - имена файлов для сертификата и ключа.
+// Их можно изменить, если нужно использовать другие имена.
 var (
 	CrtFile = "server.crt"
 	KeyFile = "server.key"
@@ -24,6 +26,8 @@ var (
 // GenerateCerts генерация сертификатов.
 func GenerateCerts() error {
 	// Создаём шаблон сертификата
+	// Здесь можно указать свои значения для полей Subject, IPAddresses и т.д.
+	// cert - это структура x509.Certificate, которая содержит информацию о сертификате.
 	cert := &x509.Certificate{
 		SerialNumber: big.NewInt(1658),
 		Subject: pkix.Name{
@@ -39,12 +43,14 @@ func GenerateCerts() error {
 	}
 
 	// Создаём приватный RSA-ключ
+	// privateKey - это структура rsa.PrivateKey, которая содержит закрытый ключ.
 	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Создаём сертификат x.509
+	// certBytes - это байтовый срез, содержащий сериализованный сертификат.
 	certBytes, err := x509.CreateCertificate(rand.Reader, cert, cert, &privateKey.PublicKey, privateKey)
 	if err != nil {
 		log.Fatal(err)
