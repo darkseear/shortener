@@ -39,7 +39,7 @@ func run() error {
 		return err
 	}
 
-	buildInfo()
+	buildInfoShortener()
 
 	storeTwo, err := storage.New(config)
 	if err != nil {
@@ -90,6 +90,6 @@ func run() error {
 
 // buildInfo возвращает информацию о сборке приложения
 // Эта функция используется для отображения информации о версии, дате сборки и коммите.
-func buildInfo() {
+func buildInfoShortener() {
 	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n", buildVersion, buildDate, buildCommit)
 }
