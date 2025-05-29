@@ -4,17 +4,16 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 
 	"go.uber.org/zap"
+	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/gzip"
 	"github.com/darkseear/shortener/internal/handlers"
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/storage"
-	"github.com/darkseear/shortener/internal/tls"
 )
 
 var (
@@ -72,15 +71,15 @@ func run() error {
 	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config, storeTwo).Handle)))
 	logger.Log.Info("Running server", zap.String("address", config.Address))
 
-	if _, err := os.Stat(tls.CrtFile); os.IsNotExist(err) {
-		logger.Log.Info("Certificate files not found, generating new ones")
-		if err := tls.GenerateCerts(); err != nil {
-			logger.Log.Error("Error generating certificates", zap.Error(err))
-		}
-	}
+	// if _, err := os.Stat(tls.CrtFile); os.IsNotExist(err) {
+	// 	logger.Log.Info("Certificate files not found, generating new ones")
+	// 	if err := tls.GenerateCerts(); err != nil {
+	// 		logger.Log.Error("Error generating certificates", zap.Error(err))
+	// 	}
+	// }
 	if config.EnableHTTPS {
 		logger.Log.Info("Starting HTTPS server", zap.String("address", config.Address))
-		err = http.ListenAndServeTLS(config.Address, tls.CrtFile, tls.KeyFile, r)
+		err = http.Serve(autocert.NewListener("example.com"), r)
 	} else {
 		logger.Log.Info("Starting HTTP server", zap.String("address", config.Address))
 		err = http.ListenAndServe(config.Address, r)
