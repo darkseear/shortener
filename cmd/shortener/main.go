@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"path/filepath"
-
-	_ "net/http/pprof"
 
 	"go.uber.org/zap"
 
@@ -14,6 +13,12 @@ import (
 	"github.com/darkseear/shortener/internal/handlers"
 	"github.com/darkseear/shortener/internal/logger"
 	"github.com/darkseear/shortener/internal/storage"
+)
+
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
 )
 
 func main() {
@@ -31,6 +36,8 @@ func run() error {
 	if err := logger.Initialize(LogLevel); err != nil {
 		return err
 	}
+
+	buildInfo()
 
 	storeTwo, err := storage.New(config)
 	if err != nil {
@@ -63,4 +70,10 @@ func run() error {
 	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config, storeTwo).Handle)))
 	logger.Log.Info("Running server", zap.String("address", config.Address))
 	return http.ListenAndServe(config.Address, r)
+}
+
+// buildInfo возвращает информацию о сборке приложения
+// Эта функция используется для отображения информации о версии, дате сборки и коммите.
+func buildInfo() {
+	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n", buildVersion, buildDate, buildCommit)
 }
