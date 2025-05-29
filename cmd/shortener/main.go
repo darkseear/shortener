@@ -37,7 +37,7 @@ func run() error {
 		return err
 	}
 
-	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n", buildVersion, buildDate, buildCommit)
+	buildInfo()
 
 	storeTwo, err := storage.New(config)
 	if err != nil {
@@ -70,4 +70,10 @@ func run() error {
 	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config, storeTwo).Handle)))
 	logger.Log.Info("Running server", zap.String("address", config.Address))
 	return http.ListenAndServe(config.Address, r)
+}
+
+// buildInfo возвращает информацию о сборке приложения
+// Эта функция используется для отображения информации о версии, дате сборки и коммите.
+func buildInfo() {
+	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n", buildVersion, buildDate, buildCommit)
 }
