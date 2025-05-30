@@ -3,8 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/acme/autocert"
@@ -22,69 +26,125 @@ var (
 	buildCommit  string = "N/A"
 )
 
-func main() {
-	if err := run(); err != nil {
-		panic(err)
-	}
+type server struct {
+	Server  *http.Server
+	cfg     *config.Config
+	Storage storage.Storage
 }
 
-// запуск сервера
-func run() error {
-
+func newServer(ctx context.Context) (*server, error) {
+	var serv server
 	//config
 	config := config.New()
 	LogLevel := config.LogLevel
 	if err := logger.Initialize(LogLevel); err != nil {
-		return err
+		return nil, err
 	}
 
+	defer logger.Log.Sync()
 	buildInfo()
 
 	storeTwo, err := storage.New(config)
 	if err != nil {
 		logger.Log.Error("Error store created")
-		return err
+		return nil, err
 	}
 
 	if config.MemoryFile != "" {
 		absPath, err := filepath.Abs(config.MemoryFile)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		logger.Log.Info("absolute path memory file")
 		config.MemoryFile = absPath
 	}
 
 	if config.DatabaseDSN != "" {
-		storeTwo.CreateTableDB(context.Background())
+		storeTwo.CreateTableDB(ctx)
 	}
+
+	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config, storeTwo).Handle)))
+	logger.Log.Info("Running server", zap.String("address", config.Address))
+
+	serv.initServer(config.Address, r, config, storeTwo)
+	return &serv, nil
+}
+
+func (serv *server) initServer(addr string, handler http.Handler, cfg *config.Config, storage storage.Storage) {
+	serv.Server = &http.Server{
+		Addr:    addr,
+		Handler: handler,
+	}
+	serv.cfg = cfg
+	serv.Storage = storage
+}
+
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
+	serv, err := newServer(ctx)
+	if err != nil {
+		logger.Log.Error("Error create server", zap.Error(err))
+		log.Fatalf("Error server: %v", err)
+	}
+	defer serv.Close(ctx)
+	if err := serv.run(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// запуск сервера
+func (serv *server) run(ctx context.Context) error {
+	var err error
+
+	go func() {
+		<-ctx.Done()
+		logger.Log.Info("Received shutdown signal, shutting down server")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := serv.Close(shutdownCtx); err != nil {
+			logger.Log.Error("Error during shutdown", zap.Error(err))
+		} else {
+			logger.Log.Info("Server shutdown gracefully")
+		}
+	}()
 
 	// Запуск отдельного HTTP-сервера для pprof
 	go func() {
-		pprofAddr := config.PprofAddr
+		pprofAddr := serv.cfg.PprofAddr
 		logger.Log.Info("Starting pprof server", zap.String("address", pprofAddr))
 		if err := http.ListenAndServe(pprofAddr, nil); err != nil {
 			logger.Log.Error("Error starting pprof server", zap.Error(err))
 		}
 	}()
 
-	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config, storeTwo).Handle)))
-	logger.Log.Info("Running server", zap.String("address", config.Address))
-
-	// if _, err := os.Stat(tls.CrtFile); os.IsNotExist(err) {
-	// 	logger.Log.Info("Certificate files not found, generating new ones")
-	// 	if err := tls.GenerateCerts(); err != nil {
-	// 		logger.Log.Error("Error generating certificates", zap.Error(err))
-	// 	}
-	// }
-	if config.EnableHTTPS {
-		logger.Log.Info("Starting HTTPS server", zap.String("address", config.Address))
-		err = http.Serve(autocert.NewListener("example.com"), r)
+	if serv.cfg.EnableHTTPS {
+		logger.Log.Info("Starting HTTPS server", zap.String("address", serv.cfg.Address))
+		err = serv.Server.Serve(autocert.NewListener("example.com"))
 	} else {
-		logger.Log.Info("Starting HTTP server", zap.String("address", config.Address))
-		err = http.ListenAndServe(config.Address, r)
+		logger.Log.Info("Starting HTTP server", zap.String("address", serv.cfg.Address))
+		err = serv.Server.ListenAndServe()
 	}
 	return err
+}
+
+func (serv *server) Close(ctx context.Context) error {
+	logger.Log.Info("Closing storage and stopping server")
+	// Закрытие сервера
+	if err := serv.Server.Shutdown(ctx); err != nil {
+		logger.Log.Error("Error shutting down server", zap.Error(err))
+		return err
+	}
+	if err := serv.Storage.Close(); err != nil {
+		logger.Log.Error("Error closing storage", zap.Error(err))
+		return err
+	}
+	if err := logger.Log.Sync(); err != nil {
+		logger.Log.Error("Error sync logger", zap.Error(err))
+		return err
+	}
+	logger.Log.Info("closed successfully")
+	return nil
 }
 
 // buildInfo возвращает информацию о сборке приложения
