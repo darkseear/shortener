@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os/signal"
 	"path/filepath"
 	"syscall"
@@ -100,7 +101,7 @@ func (serv *server) run(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 		logger.Log.Info("Received shutdown signal, shutting down server")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		if err := serv.Close(shutdownCtx); err != nil {
 			logger.Log.Error("Error during shutdown", zap.Error(err))
@@ -109,7 +110,6 @@ func (serv *server) run(ctx context.Context) error {
 		}
 	}()
 
-	// Запуск отдельного HTTP-сервера для pprof
 	go func() {
 		pprofAddr := serv.cfg.PprofAddr
 		logger.Log.Info("Starting pprof server", zap.String("address", pprofAddr))
