@@ -31,13 +31,14 @@ type server struct {
 	Server  *http.Server
 	cfg     *config.Config
 	Storage storage.Storage
+	Router  http.Handler
 }
 
 func newServer(ctx context.Context) (*server, error) {
 	var serv server
 	//config
-	config := config.New()
-	LogLevel := config.LogLevel
+	serv.cfg = config.New()
+	LogLevel := serv.cfg.LogLevel
 	if err := logger.Initialize(LogLevel); err != nil {
 		return nil, err
 	}
@@ -45,39 +46,37 @@ func newServer(ctx context.Context) (*server, error) {
 	defer logger.Log.Sync()
 	buildInfo()
 
-	storeTwo, err := storage.New(config)
+	storeTwo, err := storage.New(serv.cfg)
 	if err != nil {
 		logger.Log.Error("Error store created")
 		return nil, err
 	}
 
-	if config.MemoryFile != "" {
-		absPath, err := filepath.Abs(config.MemoryFile)
+	if serv.cfg.MemoryFile != "" {
+		absPath, err := filepath.Abs(serv.cfg.MemoryFile)
 		if err != nil {
 			return nil, err
 		}
 		logger.Log.Info("absolute path memory file")
-		config.MemoryFile = absPath
+		serv.cfg.MemoryFile = absPath
 	}
 
-	if config.DatabaseDSN != "" {
+	if serv.cfg.DatabaseDSN != "" {
 		storeTwo.CreateTableDB(ctx)
 	}
 
-	r := logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(config, storeTwo).Handle)))
-	logger.Log.Info("Running server", zap.String("address", config.Address))
+	serv.Router = logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(serv.cfg, storeTwo).Handle)))
+	logger.Log.Info("Running server", zap.String("address", serv.cfg.Address))
 
-	serv.initServer(config.Address, r, config, storeTwo)
+	serv.initServer()
 	return &serv, nil
 }
 
-func (serv *server) initServer(addr string, handler http.Handler, cfg *config.Config, storage storage.Storage) {
+func (serv *server) initServer() {
 	serv.Server = &http.Server{
-		Addr:    addr,
-		Handler: handler,
+		Addr:    serv.cfg.Address,
+		Handler: serv.Router,
 	}
-	serv.cfg = cfg
-	serv.Storage = storage
 }
 
 func main() {
