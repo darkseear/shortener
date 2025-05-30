@@ -36,6 +36,7 @@ type server struct {
 
 func newServer(ctx context.Context) (*server, error) {
 	var serv server
+	var err error
 	//config
 	serv.cfg = config.New()
 	LogLevel := serv.cfg.LogLevel
@@ -46,7 +47,7 @@ func newServer(ctx context.Context) (*server, error) {
 	defer logger.Log.Sync()
 	buildInfo()
 
-	storeTwo, err := storage.New(serv.cfg)
+	serv.Storage, err = storage.New(serv.cfg)
 	if err != nil {
 		logger.Log.Error("Error store created")
 		return nil, err
@@ -62,10 +63,10 @@ func newServer(ctx context.Context) (*server, error) {
 	}
 
 	if serv.cfg.DatabaseDSN != "" {
-		storeTwo.CreateTableDB(ctx)
+		serv.Storage.CreateTableDB(ctx)
 	}
 
-	serv.Router = logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(serv.cfg, storeTwo).Handle)))
+	serv.Router = logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(serv.cfg, serv.Storage).Handle)))
 	logger.Log.Info("Running server", zap.String("address", serv.cfg.Address))
 
 	serv.initServer()
@@ -88,13 +89,11 @@ func main() {
 		log.Fatalf("Error server: %v", err)
 	}
 	defer serv.Close(ctx)
-	if err := serv.run(ctx); err != nil {
-		panic(err)
-	}
+	serv.run(ctx)
 }
 
 // запуск сервера
-func (serv *server) run(ctx context.Context) error {
+func (serv *server) run(ctx context.Context) {
 	var err error
 
 	go func() {
@@ -124,7 +123,10 @@ func (serv *server) run(ctx context.Context) error {
 		logger.Log.Info("Starting HTTP server", zap.String("address", serv.cfg.Address))
 		err = serv.Server.ListenAndServe()
 	}
-	return err
+
+	if err != nil && err != http.ErrServerClosed {
+		log.Fatalf("Server failed: %v", err)
+	}
 }
 
 func (serv *server) Close(ctx context.Context) error {
