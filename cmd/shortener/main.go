@@ -34,6 +34,7 @@ type server struct {
 	Router  http.Handler
 }
 
+// newServer - экземпляр сервера со всеми инициализациями.
 func newServer(ctx context.Context) (*server, error) {
 	var serv server
 	var err error
@@ -73,6 +74,7 @@ func newServer(ctx context.Context) (*server, error) {
 	return &serv, nil
 }
 
+// initServer - инициализация сервера.
 func (serv *server) initServer() {
 	serv.Server = &http.Server{
 		Addr:    serv.cfg.Address,
@@ -92,7 +94,7 @@ func main() {
 	serv.run(ctx)
 }
 
-// запуск сервера
+// run - запуск сервера.
 func (serv *server) run(ctx context.Context) {
 	var err error
 
@@ -129,6 +131,7 @@ func (serv *server) run(ctx context.Context) {
 	}
 }
 
+// Close - остановка процессов.
 func (serv *server) Close(ctx context.Context) error {
 	logger.Log.Info("Closing storage and stopping server")
 	// Закрытие сервера
