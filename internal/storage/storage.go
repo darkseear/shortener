@@ -19,6 +19,7 @@ type Storage interface {
 	GetOriginalURLByUserID(userID string) ([]models.URLPair, error)
 	DeleteURLByUserID(shortURL []string, userID string) error
 	CreateTableDB(ctx context.Context) error
+	Close() error
 }
 
 // New - функция для создания нового хранилища.

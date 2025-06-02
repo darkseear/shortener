@@ -76,6 +76,12 @@ func (m *MemoryStorage) GetOriginalURLByUserID(userID string) ([]models.URLPair,
 	panic("unimplemented")
 }
 
+// Close - метод для закрытия хранилища в памяти.
+func (m *MemoryStorage) Close() error {
+	logger.Log.Info("Close memory storage")
+	return nil
+}
+
 //
 //end memory
 
@@ -242,6 +248,11 @@ func (d *DBStorage) CreateTableDB(ctx context.Context) error {
 	return nil
 }
 
+// Close - метод для закрытия соединения с базой данных.
+func (d *DBStorage) Close() error {
+	return d.DB.Close()
+}
+
 //end db
 
 // file
@@ -311,6 +322,11 @@ func (f *FileStore) DeleteURLByUserID(shortURL []string, userID string) error {
 // Принимает идентификатор пользователя в качестве параметра.
 func (f *FileStore) GetOriginalURLByUserID(userID string) ([]models.URLPair, error) {
 	panic("unimplemented")
+}
+
+// Close - для закрытия хранилища в файле.
+func (f *FileStore) Close() error {
+	return nil
 }
 
 //
