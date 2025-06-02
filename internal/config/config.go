@@ -96,6 +96,7 @@ func setFromEnv(cfg *Config) {
 	setEnableHTTPS(cfg, configFile)
 }
 
+// getConfigFile - конфиг из файла.
 func getConfigFile(cfg *Config) ConfigFile {
 	configFile, err := cfg.configFormFile()
 	if err != nil {
@@ -104,6 +105,7 @@ func getConfigFile(cfg *Config) ConfigFile {
 	return configFile
 }
 
+// setStringFields - строки файла.
 func setStringFields(cfg *Config, configFile ConfigFile) {
 	envVars := map[string]*string{
 		"SERVER_ADDRESS":    &cfg.Address,
@@ -141,6 +143,8 @@ func setStringFields(cfg *Config, configFile ConfigFile) {
 		}
 	}
 }
+
+//setEnableHTTPS - устанавливает значение EnableHTTPS из переменной окружения или из файла конфигурации.
 
 func setEnableHTTPS(cfg *Config, configFile ConfigFile) {
 	if val, ok := os.LookupEnv("ENABLE_HTTPS"); ok {

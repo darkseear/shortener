@@ -27,18 +27,21 @@ var (
 	buildCommit  string = "N/A"
 )
 
+// HTTPServer - структура, представляющая HTTP сервер с роутером и конфигурацией.
 type HTTPServer struct {
 	Server *http.Server
 	Router http.Handler
 	Cfg    *config.Config
 }
 
+// App - основная структура приложения, содержащая сервер, хранилище и конфигурацию.
 type App struct {
 	HTTPServer *HTTPServer
 	Storage    storage.Storage
 	Cfg        *config.Config
 }
 
+// newApp - инициализирует приложение, настраивает логирование, хранилище и роутер.
 func newApp(ctx context.Context) (*App, error) {
 	cfg := config.New()
 	if err := logger.Initialize(cfg.LogLevel); err != nil {
@@ -83,6 +86,7 @@ func newApp(ctx context.Context) (*App, error) {
 	}, nil
 }
 
+// Run - запускает приложение, инициализирует сервер и обрабатывает сигналы завершения.
 func (a *App) Run(ctx context.Context) {
 	go func() {
 		<-ctx.Done()
@@ -118,6 +122,7 @@ func (a *App) Run(ctx context.Context) {
 	}
 }
 
+// Close - закрывает приложение, останавливает сервер и освобождает ресурсы.
 func (a *App) Close(ctx context.Context) error {
 	logger.Log.Info("Closing storage and stopping server")
 	if err := a.HTTPServer.Server.Shutdown(ctx); err != nil {
