@@ -27,83 +27,69 @@ var (
 	buildCommit  string = "N/A"
 )
 
-type server struct {
-	Server  *http.Server
-	cfg     *config.Config
-	Storage storage.Storage
-	Router  http.Handler
+type HTTPServer struct {
+	Server *http.Server
+	Router http.Handler
+	Cfg    *config.Config
 }
 
-// newServer - экземпляр сервера со всеми инициализациями.
-func newServer(ctx context.Context) (*server, error) {
-	var serv server
-	var err error
-	//config
-	serv.cfg = config.New()
-	LogLevel := serv.cfg.LogLevel
-	if err := logger.Initialize(LogLevel); err != nil {
+type App struct {
+	HTTPServer *HTTPServer
+	Storage    storage.Storage
+	Cfg        *config.Config
+}
+
+func newApp(ctx context.Context) (*App, error) {
+	cfg := config.New()
+	if err := logger.Initialize(cfg.LogLevel); err != nil {
 		return nil, err
 	}
-
 	defer logger.Log.Sync()
 	buildInfo()
 
-	serv.Storage, err = storage.New(serv.cfg)
+	stor, err := storage.New(cfg)
 	if err != nil {
 		logger.Log.Error("Error store created")
 		return nil, err
 	}
 
-	if serv.cfg.MemoryFile != "" {
-		absPath, err := filepath.Abs(serv.cfg.MemoryFile)
+	if cfg.MemoryFile != "" {
+		absPath, err := filepath.Abs(cfg.MemoryFile)
 		if err != nil {
 			return nil, err
 		}
 		logger.Log.Info("absolute path memory file")
-		serv.cfg.MemoryFile = absPath
+		cfg.MemoryFile = absPath
 	}
 
-	if serv.cfg.DatabaseDSN != "" {
-		serv.Storage.CreateTableDB(ctx)
+	if cfg.DatabaseDSN != "" {
+		stor.CreateTableDB(ctx)
 	}
 
-	serv.Router = logger.WhithLogging(gzip.GzipMiddleware((handlers.Routers(serv.cfg, serv.Storage).Handle)))
-	logger.Log.Info("Running server", zap.String("address", serv.cfg.Address))
+	router := logger.WhithLogging(gzip.GzipMiddleware(handlers.Routers(cfg, stor).Handle))
+	httpSrv := &http.Server{
+		Addr:    cfg.Address,
+		Handler: router,
+	}
 
-	serv.initServer()
-	return &serv, nil
+	return &App{
+		HTTPServer: &HTTPServer{
+			Server: httpSrv,
+			Router: router,
+			Cfg:    cfg,
+		},
+		Storage: stor,
+		Cfg:     cfg,
+	}, nil
 }
 
-// initServer - инициализация сервера.
-func (serv *server) initServer() {
-	serv.Server = &http.Server{
-		Addr:    serv.cfg.Address,
-		Handler: serv.Router,
-	}
-}
-
-func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
-	defer stop()
-	serv, err := newServer(ctx)
-	if err != nil {
-		logger.Log.Error("Error create server", zap.Error(err))
-		log.Fatalf("Error server: %v", err)
-	}
-	defer serv.Close(ctx)
-	serv.run(ctx)
-}
-
-// run - запуск сервера.
-func (serv *server) run(ctx context.Context) {
-	var err error
-
+func (a *App) Run(ctx context.Context) {
 	go func() {
 		<-ctx.Done()
 		logger.Log.Info("Received shutdown signal, shutting down server")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		if err := serv.Close(shutdownCtx); err != nil {
+		if err := a.Close(shutdownCtx); err != nil {
 			logger.Log.Error("Error during shutdown", zap.Error(err))
 		} else {
 			logger.Log.Info("Server shutdown gracefully")
@@ -111,19 +97,20 @@ func (serv *server) run(ctx context.Context) {
 	}()
 
 	go func() {
-		pprofAddr := serv.cfg.PprofAddr
+		pprofAddr := a.Cfg.PprofAddr
 		logger.Log.Info("Starting pprof server", zap.String("address", pprofAddr))
 		if err := http.ListenAndServe(pprofAddr, nil); err != nil {
 			logger.Log.Error("Error starting pprof server", zap.Error(err))
 		}
 	}()
 
-	if serv.cfg.EnableHTTPS {
-		logger.Log.Info("Starting HTTPS server", zap.String("address", serv.cfg.Address))
-		err = serv.Server.Serve(autocert.NewListener("example.com"))
+	var err error
+	if a.Cfg.EnableHTTPS {
+		logger.Log.Info("Starting HTTPS server", zap.String("address", a.Cfg.Address))
+		err = a.HTTPServer.Server.Serve(autocert.NewListener("example.com"))
 	} else {
-		logger.Log.Info("Starting HTTP server", zap.String("address", serv.cfg.Address))
-		err = serv.Server.ListenAndServe()
+		logger.Log.Info("Starting HTTP server", zap.String("address", a.Cfg.Address))
+		err = a.HTTPServer.Server.ListenAndServe()
 	}
 
 	if err != nil && err != http.ErrServerClosed {
@@ -131,15 +118,13 @@ func (serv *server) run(ctx context.Context) {
 	}
 }
 
-// Close - остановка процессов.
-func (serv *server) Close(ctx context.Context) error {
+func (a *App) Close(ctx context.Context) error {
 	logger.Log.Info("Closing storage and stopping server")
-	// Закрытие сервера
-	if err := serv.Server.Shutdown(ctx); err != nil {
+	if err := a.HTTPServer.Server.Shutdown(ctx); err != nil {
 		logger.Log.Error("Error shutting down server", zap.Error(err))
 		return err
 	}
-	if err := serv.Storage.Close(); err != nil {
+	if err := a.Storage.Close(); err != nil {
 		logger.Log.Error("Error closing storage", zap.Error(err))
 		return err
 	}
@@ -151,8 +136,19 @@ func (serv *server) Close(ctx context.Context) error {
 	return nil
 }
 
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
+	app, err := newApp(ctx)
+	if err != nil {
+		logger.Log.Error("Error create app", zap.Error(err))
+		log.Fatalf("Error app: %v", err)
+	}
+	defer app.Close(ctx)
+	app.Run(ctx)
+}
+
 // buildInfo возвращает информацию о сборке приложения
-// Эта функция используется для отображения информации о версии, дате сборки и коммите.
 func buildInfo() {
 	fmt.Printf("Build version: %s\nBuild date: %s\nBuild commit: %s\n", buildVersion, buildDate, buildCommit)
 }

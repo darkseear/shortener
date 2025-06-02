@@ -90,6 +90,21 @@ func New() *Config {
 
 // setFromEnv - обновляет конфиг значениями из переменных окружения.
 func setFromEnv(cfg *Config) {
+	configFile := getConfigFile(cfg)
+
+	setStringFields(cfg, configFile)
+	setEnableHTTPS(cfg, configFile)
+}
+
+func getConfigFile(cfg *Config) ConfigFile {
+	configFile, err := cfg.configFormFile()
+	if err != nil {
+		logger.Log.Error("Error reading config file", zap.Error(err))
+	}
+	return configFile
+}
+
+func setStringFields(cfg *Config, configFile ConfigFile) {
 	envVars := map[string]*string{
 		"SERVER_ADDRESS":    &cfg.Address,
 		"BASE_URL":          &cfg.URL,
@@ -101,16 +116,10 @@ func setFromEnv(cfg *Config) {
 		"CONFIG":            &cfg.ConfigFile,
 	}
 
-	configFile, err := cfg.configFormFile()
-	if err != nil {
-		logger.Log.Error("Error reading config file", zap.Error(err))
-	}
-
 	for env, ptr := range envVars {
 		if val, ok := os.LookupEnv(env); ok {
 			*ptr = val
 		} else if *ptr == "" {
-			// Если переменная окружения не задана и флаг не указан, берём из файла конфигурации
 			switch env {
 			case "SERVER_ADDRESS":
 				if configFile.Address != "" {
@@ -131,15 +140,12 @@ func setFromEnv(cfg *Config) {
 			}
 		}
 	}
+}
 
+func setEnableHTTPS(cfg *Config, configFile ConfigFile) {
 	if val, ok := os.LookupEnv("ENABLE_HTTPS"); ok {
-		if val == "true" || val == "1" {
-			cfg.EnableHTTPS = true
-		} else {
-			cfg.EnableHTTPS = false
-		}
+		cfg.EnableHTTPS = val == "true" || val == "1"
 	} else if !flagEnableHTTPS && !cfg.EnableHTTPS {
-		// Если переменная окружения не задана и флаг не указан, берём из файла конфигурации
 		cfg.EnableHTTPS = configFile.EnableHTTPS
 	}
 }
