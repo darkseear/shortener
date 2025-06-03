@@ -83,6 +83,7 @@ func GenerateRandoUserID() string {
 	return fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
 }
 
+// Stats - сбор статистики по количеству user и url.
 func (r *Router) Stats() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		// Проверка trusted_subnet
