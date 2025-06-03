@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"math/rand/v2"
+	"net"
 	"net/http"
 	"strings"
 
@@ -45,6 +46,7 @@ func Routers(cfg *config.Config, store storage.Storage) *Router {
 	r.Handle.Get("/ping", r.PingDB())
 	r.Handle.Get("/api/user/urls", r.ListURL())
 	r.Handle.Delete("/api/user/urls", r.DeleteURL())
+	r.Handle.Get("/api/internal/stats", r.Stats())
 
 	return &r
 }
@@ -57,6 +59,8 @@ type Handlers interface {
 	ShortenBatch() http.HandlerFunc
 	PingDB() http.HandlerFunc
 	ListURL() http.HandlerFunc
+	DeleteURL() http.HandlerFunc
+	Stats() http.HandlerFunc
 }
 
 // ReadJSON - функция для чтения JSON-данных из HTTP-запроса.
@@ -77,6 +81,59 @@ func WriteJSON(res http.ResponseWriter, status int, v interface{}) error {
 // GenerateRandoUserID - функция для генерации случайного идентификатора пользователя.
 func GenerateRandoUserID() string {
 	return fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
+}
+
+func (r *Router) Stats() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		// Проверка trusted_subnet
+		if r.Cfg.TrustedSubnet == "" {
+			res.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		clientIP := req.Header.Get("X-Real-IP")
+		if clientIP == "" {
+			res.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		_, subnet, err := net.ParseCIDR(r.Cfg.TrustedSubnet)
+		if err != nil {
+			res.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		ip := net.ParseIP(clientIP)
+		if ip == nil || !subnet.Contains(ip) {
+			res.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		// Получение статистики
+		stats, err := r.Store.Stats(req.Context())
+		if err != nil {
+			logger.Log.Error("Error getting stats", zap.Error(err))
+			res.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if stats.URLs == 0 && stats.Users == 0 {
+			res.WriteHeader(http.StatusNoContent)
+			return
+		}
+		// Запись статистики в ответ
+		if err := WriteJSON(res, http.StatusOK, stats); err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
+			return
+		}
+		logger.Log.Info("Stats requested", zap.Int("URLs", stats.URLs), zap.Int("Users", stats.Users))
+		logger.Log.Info("Client IP", zap.String("IP", clientIP))
+		logger.Log.Info("Trusted Subnet", zap.String("Subnet", r.Cfg.TrustedSubnet))
+		logger.Log.Info("Request Method", zap.String("Method", req.Method))
+		logger.Log.Info("Request URL", zap.String("URL", req.URL.String()))
+		logger.Log.Info("Request Headers", zap.Any("Headers", req.Header))
+		logger.Log.Info("Request RemoteAddr", zap.String("RemoteAddr", req.RemoteAddr))
+
+	}
 }
 
 // GetURL - функция для обработки HTTP-запросов на получение оригинального URL по короткому идентификатору.
