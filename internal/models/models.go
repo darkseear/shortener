@@ -42,3 +42,9 @@ type DBUrlShorten struct {
 	UserID      string `json:"user_id"`
 	DeletedFlag bool   `json:"is_deleted"`
 }
+
+// Stats - структура для хранения статистики по сокращенным ссылкам.
+type Stats struct {
+	URLs  int `json:"urls"`
+	Users int `json:"users"`
+}

@@ -37,6 +37,17 @@ func NewMemoryStorage(cfg *config.Config) *MemoryStorage {
 		Memory: make(map[string]string), cfg: cfg}
 }
 
+// Stats - метод для получения статистики по сокращенным ссылкам.
+func (m *MemoryStorage) Stats(ctx context.Context) (models.Stats, error) {
+	logger.Log.Info("start get stats memory")
+	stats := models.Stats{
+		URLs:  len(m.Memory),
+		Users: 1, // В памяти нет информации о пользователях, поэтому возвращаем 1.
+	}
+	logger.Log.Info("Get stats from memory storage", zap.Int("URLs", stats.URLs), zap.Int("Users", stats.Users))
+	return stats, nil
+}
+
 // GetOriginalURL - метод для получения оригинального URL по короткому адресу.
 // Принимает короткий адрес и идентификатор пользователя в качестве параметров.
 func (m *MemoryStorage) GetOriginalURL(shortURL string, userID string) (string, error) {
@@ -96,6 +107,26 @@ type DBStorage struct {
 // Принимает указатель на базу данных и конфигурацию в качестве параметров.
 func NewDBStorage(db *sql.DB, cfg *config.Config) *DBStorage {
 	return &DBStorage{DB: db, cfg: cfg}
+}
+
+// Stats - метод для получения статистики по сокращенным ссылкам из базы данных.
+func (d *DBStorage) Stats(ctx context.Context) (models.Stats, error) {
+	logger.Log.Info("start get stats db")
+	stats := models.Stats{}
+	query := "SELECT COUNT(*) FROM urls WHERE is_deleted = false"
+	row := d.DB.QueryRowContext(ctx, query)
+	if err := row.Scan(&stats.URLs); err != nil {
+		logger.Log.Error("Get stats error", zap.Error(err))
+		return stats, err
+	}
+	query = "SELECT COUNT(DISTINCT userid) FROM urls WHERE is_deleted = false"
+	row = d.DB.QueryRowContext(ctx, query)
+	if err := row.Scan(&stats.Users); err != nil {
+		logger.Log.Error("Get stats error", zap.Error(err))
+		return stats, err
+	}
+	logger.Log.Info("Get stats from db storage", zap.Int("URLs", stats.URLs), zap.Int("Users", stats.Users))
+	return stats, nil
 }
 
 // GetOriginalURL - метод для получения оригинального URL по короткому адресу.
@@ -267,6 +298,26 @@ type FileStore struct {
 // Принимает путь к файлу и конфигурацию в качестве параметров.
 func NewFileStore(file string, cfg *config.Config) *FileStore {
 	return &FileStore{File: file, cfg: cfg}
+}
+
+// Stats - метод для получения статистики по сокращенным ссылкам из файлового хранилища.
+func (f *FileStore) Stats(ctx context.Context) (models.Stats, error) {
+	logger.Log.Info("start get stats file")
+	stats := models.Stats{}
+	c, err := NewConsumer(f.cfg.MemoryFile)
+	if err != nil {
+		logger.Log.Error("consumer error", zap.Error(err))
+		panic(err)
+	}
+	list, err := c.ReadMemoryFileAll()
+	if err != nil {
+		logger.Log.Error("read memory file error", zap.Error(err))
+		panic(err)
+	}
+	stats.URLs = len(list)
+	stats.Users = 1 // В файловом хранилище нет информации о пользователях, поэтому возвращаем 1.
+	logger.Log.Info("Get stats from file storage", zap.Int("URLs", stats.URLs), zap.Int("Users", stats.Users))
+	return stats, nil
 }
 
 // GetOriginalURL - метод для получения оригинального URL по короткому адресу.
