@@ -128,11 +128,6 @@ func (r *Router) Stats() http.HandlerFunc {
 		}
 		logger.Log.Info("Stats requested", zap.Int("URLs", stats.URLs), zap.Int("Users", stats.Users))
 		logger.Log.Info("Client IP", zap.String("IP", clientIP))
-		logger.Log.Info("Trusted Subnet", zap.String("Subnet", r.Cfg.TrustedSubnet))
-		logger.Log.Info("Request Method", zap.String("Method", req.Method))
-		logger.Log.Info("Request URL", zap.String("URL", req.URL.String()))
-		logger.Log.Info("Request Headers", zap.Any("Headers", req.Header))
-		logger.Log.Info("Request RemoteAddr", zap.String("RemoteAddr", req.RemoteAddr))
 
 	}
 }
