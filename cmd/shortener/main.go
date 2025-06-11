@@ -13,6 +13,7 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/acme/autocert"
+	"google.golang.org/grpc"
 
 	"github.com/darkseear/shortener/internal/config"
 	"github.com/darkseear/shortener/internal/gzip"
@@ -34,9 +35,16 @@ type HTTPServer struct {
 	Cfg    *config.Config
 }
 
-// App - основная структура приложения, содержащая сервер, хранилище и конфигурацию.
+// GRPCServer - структура для gRPC сервера.
+type GRPCServer struct {
+	Server *grpc.Server
+	Addr   string
+}
+
+// App - основная структура приложения, содержащая серверы, хранилище и конфигурацию.
 type App struct {
 	HTTPServer *HTTPServer
+	GRPCServer *GRPCServer
 	Storage    storage.Storage
 	Cfg        *config.Config
 }
