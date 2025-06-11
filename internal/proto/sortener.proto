@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/darkseear/shortener/internal/proto/sortener";
+
+message ShortenRequest {
+    string url = 1;
+}
+
+message ShortenResponse {
+    string result = 1;
+}
+
+message ExpandRequest {
+    string id = 1;
+}
+
+message ExpandResponse {
+    string url = 1;
+}
+
+message Empty {}
+
+service Sortener {
+    rpc ShoertenURL(ShortenRequest) returns (ShortenResponse);
+}
