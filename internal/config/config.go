@@ -22,6 +22,7 @@ type Config struct {
 	PprofAddr     string `env:"PPROF_ADDR"`
 	ConfigFile    string `env:"CONFIG"`
 	TrustedSubnet string `env:"TRUSTED_SUBNET"`
+	GRPCAddr      string `env:"GRPC_ADDR"` // Адрес gRPC сервера
 }
 
 // ConfigFile структура для хранения конфигурации из файла.
@@ -33,6 +34,7 @@ type ConfigFile struct {
 	DatabaseDSN   string `json:"database_dsn"`   // -d /DATABASE_DSN
 	EnableHTTPS   bool   `json:"enable_https"`   // -s /ENABLE_HTTPS
 	TrustedSubnet string `json:"trusted_subnet"` // -t /TRUSTED_SUBNET
+	GRPCAddr      string `json:"grpc_addr"`      // Адрес gRPC сервера
 }
 
 var (
@@ -47,6 +49,7 @@ var (
 	flagPprofAddr     string
 	flagConfigFile    string
 	flagTrustedSubnet string
+	flagGRPCAddr      string
 )
 
 // registerFlags инициализирует флаги один раз.
@@ -63,6 +66,7 @@ func registerFlags() {
 		flag.StringVar(&flagConfigFile, "c", "", "Path to config file")
 		flag.StringVar(&flagConfigFile, "config", "", "Path to config file")
 		flag.StringVar(&flagTrustedSubnet, "t", "", "Trusted subnet for internal requests")
+		flag.StringVar(&flagGRPCAddr, "g", "localhost:9090", "gRPC server address")
 	})
 }
 
@@ -85,6 +89,7 @@ func New() *Config {
 		PprofAddr:     flagPprofAddr,
 		TrustedSubnet: flagTrustedSubnet,
 		ConfigFile:    flagConfigFile,
+		GRPCAddr:      flagGRPCAddr,
 	}
 
 	// Переопределение значений переменными окружения
@@ -122,6 +127,7 @@ func setStringFields(cfg *Config, configFile ConfigFile) {
 		"PPROF_ADDR":        &cfg.PprofAddr,
 		"CONFIG":            &cfg.ConfigFile,
 		"TRUSTED_SUBNET":    &cfg.TrustedSubnet,
+		"GRPC_ADDR":         &cfg.GRPCAddr,
 	}
 
 	for env, ptr := range envVars {
@@ -148,6 +154,10 @@ func setStringFields(cfg *Config, configFile ConfigFile) {
 			case "TRUSTED_SUBNET":
 				if configFile.TrustedSubnet != "" {
 					*ptr = configFile.TrustedSubnet
+				}
+			case "GRPC_ADDR":
+				if configFile.GRPCAddr != "" {
+					*ptr = configFile.GRPCAddr
 				}
 			}
 		}
