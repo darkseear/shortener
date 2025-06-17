@@ -19,6 +19,7 @@ import (
 	"github.com/darkseear/shortener/internal/gzip"
 	"github.com/darkseear/shortener/internal/handlers"
 	"github.com/darkseear/shortener/internal/logger"
+	"github.com/darkseear/shortener/internal/services"
 	"github.com/darkseear/shortener/internal/storage"
 )
 
@@ -38,7 +39,6 @@ type HTTPServer struct {
 // GRPCServer - структура для gRPC сервера.
 type GRPCServer struct {
 	Server *grpc.Server
-	Addr   string
 }
 
 // App - основная структура приложения, содержащая серверы, хранилище и конфигурацию.
@@ -83,11 +83,18 @@ func newApp(ctx context.Context) (*App, error) {
 		Handler: router,
 	}
 
+	// Настройка gRPC сервера
+	auth := services.NewAuthService(cfg.SecretKey).UnaryAuthInterceptor()
+	grpcSrv := grpc.NewServer(grpc.UnaryInterceptor(auth))
+
 	return &App{
 		HTTPServer: &HTTPServer{
 			Server: httpSrv,
 			Router: router,
 			Cfg:    cfg,
+		},
+		GRPCServer: &GRPCServer{
+			Server: grpcSrv,
 		},
 		Storage: stor,
 		Cfg:     cfg,

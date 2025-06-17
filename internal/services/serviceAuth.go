@@ -1,11 +1,18 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"github.com/darkseear/shortener/internal/logger"
 )
@@ -93,4 +100,40 @@ func (s *AuthService) IssueCookie(w http.ResponseWriter, r *http.Request, userID
 	}
 
 	return userID
+}
+
+// UnaryAuthInterceptor возвращает grpc.UnaryServerInterceptor для проверки JWT токена.
+func (s *AuthService) UnaryAuthInterceptor() grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
+		md, ok := metadata.FromIncomingContext(ctx)
+		if !ok {
+			return nil, status.Error(codes.Unauthenticated, "metadata is not provided")
+		}
+
+		var token string
+		if authHeaders, ok := md["authorization"]; ok && len(authHeaders) > 0 {
+			parts := strings.SplitN(authHeaders[0], " ", 2)
+			if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+				token = parts[1]
+			}
+		}
+
+		if token == "" {
+			return nil, status.Error(codes.Unauthenticated, "authorization token is not provided")
+		}
+
+		userID, err := s.ValidateToken(token)
+		if err != nil {
+			return nil, status.Error(codes.Unauthenticated, "invalid token")
+		}
+
+		// Добавляем userID в context для дальнейшего использования
+		newCtx := context.WithValue(ctx, "userID", userID)
+		return handler(newCtx, req)
+	}
 }
