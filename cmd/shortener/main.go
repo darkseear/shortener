@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os/signal"
@@ -132,6 +133,17 @@ func (a *App) Run(ctx context.Context) {
 		err = a.HTTPServer.Server.ListenAndServe()
 	}
 
+	listener, err := net.Listen("tcp", a.Cfg.GRPCAddr)
+	if err != nil {
+		logger.Log.Error("Error starting gRPC server", zap.Error(err))
+		log.Fatalf("Error starting gRPC server: %v", err)
+	}
+	err = a.GRPCServer.Server.Serve(listener)
+	if err != nil {
+		logger.Log.Error("Error starting gRPC server", zap.Error(err))
+		log.Fatalf("Error starting gRPC server: %v", err)
+	}
+
 	if err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server failed: %v", err)
 	}
@@ -139,6 +151,7 @@ func (a *App) Run(ctx context.Context) {
 
 // Close - закрывает приложение, останавливает сервер и освобождает ресурсы.
 func (a *App) Close(ctx context.Context) error {
+	a.GRPCServer.Server.GracefulStop()
 	logger.Log.Info("Closing storage and stopping server")
 	if err := a.HTTPServer.Server.Shutdown(ctx); err != nil {
 		logger.Log.Error("Error shutting down server", zap.Error(err))
