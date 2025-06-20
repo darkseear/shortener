@@ -88,7 +88,7 @@ func newApp(ctx context.Context) (*App, error) {
 	// Настройка gRPC сервера
 	auth := services.NewAuthService(cfg.SecretKey).UnaryAuthInterceptor()
 	grpcSrv := grpc.NewServer(grpc.UnaryInterceptor(auth))
-	nss := proto.NewGRPCShortenerServer(&stor, cfg)
+	nss := proto.NewGRPCShortenerServer(stor, cfg)
 	proto.RegisterSortenerServer(grpcSrv, nss)
 
 	return &App{

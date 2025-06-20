@@ -38,10 +38,26 @@ message ShortenResponse {
 }
 
 message ShortenBatchRequest {
-    repeated string urls = 1;
+    repeated ShortenBatchRequestItem items = 1;
 }
 message ShortenBatchResponse {
-    repeated string short_urls = 1;
+    repeated ShortenBatchResponseItem items = 1;
+}
+
+message ShortenBatchRequestItem {
+    string correlation_id = 1;
+    string original_url = 2;
+}
+
+message ShortenBatchResponseItem {
+    string correlation_id = 1;
+    string short_url = 2;
+}
+
+message URLItem {
+    string user_id = 1;
+    string short_url = 2;
+    string original_url = 3;
 }
 
 message PingDBRequest {}
@@ -49,11 +65,9 @@ message PingDBResponse {
     bool ok = 1;
 }
 
-message ListURLRequest {
-    string user_id = 1;
-}
+message ListURLRequest {}
 message ListURLResponse {
-    repeated string urls = 1;
+    repeated URLItem urls = 1;
 }
 
 message DeleteURLRequest {

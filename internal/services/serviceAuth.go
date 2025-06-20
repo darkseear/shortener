@@ -3,11 +3,14 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
+	"math"
+	"math/rand"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"go.uber.org/zap"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -110,16 +113,25 @@ func (s *AuthService) UnaryAuthInterceptor() grpc.UnaryServerInterceptor {
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
+		var token string
+		var err error
+		var userID string
+		var newCtx context.Context
+
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			return nil, status.Error(codes.Unauthenticated, "metadata is not provided")
-		}
-
-		var token string
-		if authHeaders, ok := md["authorization"]; ok && len(authHeaders) > 0 {
-			parts := strings.SplitN(authHeaders[0], " ", 2)
-			if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
-				token = parts[1]
+		} else {
+			values := md.Get("auth_token")
+			if len(values) > 0 {
+				token = values[0]
+			} else {
+				userID = fmt.Sprintf("%d", int(math.Floor(1000+math.Floor(9000*rand.Float64()))))
+				token, err = s.GenerateToken(userID)
+				if err != nil {
+					logger.Log.Error("Ошибка при генерации токена", zap.Error(err))
+					return nil, status.Error(codes.Internal, "failed to generate token")
+				}
 			}
 		}
 
@@ -127,13 +139,83 @@ func (s *AuthService) UnaryAuthInterceptor() grpc.UnaryServerInterceptor {
 			return nil, status.Error(codes.Unauthenticated, "authorization token is not provided")
 		}
 
-		userID, err := s.ValidateToken(token)
+		userID, err = s.ValidateToken(token)
 		if err != nil {
 			return nil, status.Error(codes.Unauthenticated, "invalid token")
 		}
+		clientIP := ""
+		if mdClientIP, ok := md["client_ip"]; ok && len(mdClientIP) > 0 {
+			clientIP = mdClientIP[0]
+		}
 
-		// Добавляем userID в context для дальнейшего использования
-		newCtx := context.WithValue(ctx, "userID", userID)
-		return handler(newCtx, req)
+		// Добавляем в context для дальнейшего использования
+		newCtx = context.WithValue(ctx, "userID", userID)
+		newCtx = context.WithValue(newCtx, "client_ip", clientIP)
+		newCtx = context.WithValue(newCtx, "auth_token", token)
+		// Добавляем userID и auth_token в метаданные gRPC запроса
+		md = metadata.Pairs("userID", userID, "auth_token", token, "client_ip", clientIP)
+		newCtx = metadata.NewIncomingContext(newCtx, md)
+		// Передаем новый контекст с userID дальше в цепочку вызовов
+		logger.Log.Info("Проверка токена прошла успешно")
+		res, err := handler(newCtx, req)
+		if err != nil {
+			logger.Log.Error("Ошибка при обработке запроса", zap.Error(err))
+			return nil, status.Error(codes.Internal, "internal server error")
+		}
+
+		if err := grpc.SendHeader(newCtx, md); err != nil {
+			logger.Log.Error("Ошибка при отправке заголовков", zap.Error(err))
+			return nil, status.Error(codes.Internal, "failed to send headers")
+		}
+		return res, nil
 	}
+}
+
+// GetUserIDFromContext - извлекает userID из контекста запроса.
+func GetUserIDFromContext(ctx context.Context) (string, error) {
+	userID, ok := ctx.Value("userID").(string)
+	if !ok || userID == "" {
+		return "", errors.New("userID not found in context")
+	}
+	return userID, nil
+}
+
+// GetUserIDFromMetadata - извлекает userID из метаданных gRPC запроса.
+func GetUserIDFromMetadata(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", errors.New("metadata is not provided")
+	}
+
+	values := md["userID"]
+	if len(values) == 0 {
+		return "", errors.New("userID not found in metadata")
+	}
+
+	userID := values[0]
+	if userID == "" {
+		return "", errors.New("userID is empty")
+	}
+
+	return userID, nil
+}
+
+// GetClientIPFromMetadata - извлекает IP клиента из метаданных gRPC запроса.
+func GetClientIPFromMetadata(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", errors.New("metadata is not provided")
+	}
+
+	values := md["client_ip"]
+	if len(values) == 0 {
+		return "", errors.New("client_ip not found in metadata")
+	}
+
+	clientIP := values[0]
+	if clientIP == "" {
+		return "", errors.New("client_ip is empty")
+	}
+
+	return clientIP, nil
 }
