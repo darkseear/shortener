@@ -12,38 +12,44 @@ import (
 
 // Config структура конфигурации приложения.
 type Config struct {
-	Address     string `env:"SERVER_ADDRESS"`
-	URL         string `env:"BASE_URL"`
-	LogLevel    string `env:"LOG_LEVEL"`
-	MemoryFile  string `env:"FILE_STORAGE_PATH"`
-	DatabaseDSN string `env:"DATABASE_DSN"`
-	SecretKey   string `env:"SECRET_KEY"`
-	EnableHTTPS bool   `env:"ENABLE_HTTPS"`
-	PprofAddr   string `env:"PPROF_ADDR"`
-	ConfigFile  string `env:"CONFIG"`
+	Address       string `env:"SERVER_ADDRESS"`
+	URL           string `env:"BASE_URL"`
+	LogLevel      string `env:"LOG_LEVEL"`
+	MemoryFile    string `env:"FILE_STORAGE_PATH"`
+	DatabaseDSN   string `env:"DATABASE_DSN"`
+	SecretKey     string `env:"SECRET_KEY"`
+	EnableHTTPS   bool   `env:"ENABLE_HTTPS"`
+	PprofAddr     string `env:"PPROF_ADDR"`
+	ConfigFile    string `env:"CONFIG"`
+	TrustedSubnet string `env:"TRUSTED_SUBNET"`
+	GRPCAddr      string `env:"GRPC_ADDR"` // Адрес gRPC сервера
 }
 
 // ConfigFile структура для хранения конфигурации из файла.
 // Используется для загрузки параметров из JSON-файла конфигурации.
 type ConfigFile struct {
-	Address     string `json:"address"`      // -a /SERVER_ADDRESS
-	URL         string `json:"url"`          // -b /BASE_URL
-	MemoryFile  string `json:"memory_file"`  // -f /FILE_STORAGE_PATH
-	DatabaseDSN string `json:"database_dsn"` // -d /DATABASE_DSN
-	EnableHTTPS bool   `json:"enable_https"` // -s /ENABLE_HTTPS
+	Address       string `json:"address"`        // -a /SERVER_ADDRESS
+	URL           string `json:"url"`            // -b /BASE_URL
+	MemoryFile    string `json:"memory_file"`    // -f /FILE_STORAGE_PATH
+	DatabaseDSN   string `json:"database_dsn"`   // -d /DATABASE_DSN
+	EnableHTTPS   bool   `json:"enable_https"`   // -s /ENABLE_HTTPS
+	TrustedSubnet string `json:"trusted_subnet"` // -t /TRUSTED_SUBNET
+	GRPCAddr      string `json:"grpc_addr"`      // Адрес gRPC сервера
 }
 
 var (
-	once            sync.Once
-	flagAddress     string
-	flagURL         string
-	flagLogLevel    string
-	flagFile        string
-	flagDSN         string
-	flagSecretKey   string
-	flagEnableHTTPS bool
-	flagPprofAddr   string
-	flagConfigFile  string
+	once              sync.Once
+	flagAddress       string
+	flagURL           string
+	flagLogLevel      string
+	flagFile          string
+	flagDSN           string
+	flagSecretKey     string
+	flagEnableHTTPS   bool
+	flagPprofAddr     string
+	flagConfigFile    string
+	flagTrustedSubnet string
+	flagGRPCAddr      string
 )
 
 // registerFlags инициализирует флаги один раз.
@@ -59,6 +65,8 @@ func registerFlags() {
 		flag.StringVar(&flagPprofAddr, "p", ":8081", "Address for pprof server")
 		flag.StringVar(&flagConfigFile, "c", "", "Path to config file")
 		flag.StringVar(&flagConfigFile, "config", "", "Path to config file")
+		flag.StringVar(&flagTrustedSubnet, "t", "", "Trusted subnet for internal requests")
+		flag.StringVar(&flagGRPCAddr, "g", "localhost:9090", "gRPC server address")
 	})
 }
 
@@ -71,15 +79,17 @@ func New() *Config {
 	}
 
 	cfg := &Config{
-		Address:     flagAddress,
-		URL:         flagURL,
-		LogLevel:    flagLogLevel,
-		MemoryFile:  flagFile,
-		DatabaseDSN: flagDSN,
-		SecretKey:   flagSecretKey,
-		EnableHTTPS: flagEnableHTTPS,
-		PprofAddr:   flagPprofAddr,
-		ConfigFile:  flagConfigFile,
+		Address:       flagAddress,
+		URL:           flagURL,
+		LogLevel:      flagLogLevel,
+		MemoryFile:    flagFile,
+		DatabaseDSN:   flagDSN,
+		SecretKey:     flagSecretKey,
+		EnableHTTPS:   flagEnableHTTPS,
+		PprofAddr:     flagPprofAddr,
+		TrustedSubnet: flagTrustedSubnet,
+		ConfigFile:    flagConfigFile,
+		GRPCAddr:      flagGRPCAddr,
 	}
 
 	// Переопределение значений переменными окружения
@@ -116,6 +126,8 @@ func setStringFields(cfg *Config, configFile ConfigFile) {
 		"SECRET_KEY":        &cfg.SecretKey,
 		"PPROF_ADDR":        &cfg.PprofAddr,
 		"CONFIG":            &cfg.ConfigFile,
+		"TRUSTED_SUBNET":    &cfg.TrustedSubnet,
+		"GRPC_ADDR":         &cfg.GRPCAddr,
 	}
 
 	for env, ptr := range envVars {
@@ -138,6 +150,14 @@ func setStringFields(cfg *Config, configFile ConfigFile) {
 			case "DATABASE_DSN":
 				if configFile.DatabaseDSN != "" {
 					*ptr = configFile.DatabaseDSN
+				}
+			case "TRUSTED_SUBNET":
+				if configFile.TrustedSubnet != "" {
+					*ptr = configFile.TrustedSubnet
+				}
+			case "GRPC_ADDR":
+				if configFile.GRPCAddr != "" {
+					*ptr = configFile.GRPCAddr
 				}
 			}
 		}
