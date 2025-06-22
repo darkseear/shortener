@@ -20,6 +20,9 @@ import (
 	"github.com/darkseear/shortener/internal/logger"
 )
 
+// contextKey - тип для ключей в контексте.
+type contextKey string
+
 // AuthService - структура для работы с авторизацией.
 type AuthService struct {
 	secretKey string
@@ -149,9 +152,9 @@ func (s *AuthService) UnaryAuthInterceptor() grpc.UnaryServerInterceptor {
 		}
 
 		// Добавляем в context для дальнейшего использования
-		newCtx = context.WithValue(ctx, "userID", userID)
-		newCtx = context.WithValue(newCtx, "client_ip", clientIP)
-		newCtx = context.WithValue(newCtx, "auth_token", token)
+		newCtx = context.WithValue(ctx, contextKey("userID"), userID)
+		newCtx = context.WithValue(newCtx, contextKey("client_ip"), clientIP)
+		newCtx = context.WithValue(newCtx, contextKey("auth_token"), token)
 		// Добавляем userID и auth_token в метаданные gRPC запроса
 		md = metadata.Pairs("userID", userID, "auth_token", token, "client_ip", clientIP)
 		newCtx = metadata.NewIncomingContext(newCtx, md)

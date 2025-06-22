@@ -137,14 +137,13 @@ func (a *App) Run(ctx context.Context) {
 
 	// Запуск gRPC сервера
 	go func() {
-
 		listener, err := net.Listen("tcp", a.Cfg.GRPCAddr)
 		if err != nil {
 			logger.Log.Error("Error starting gRPC server", zap.Error(err))
 			log.Fatalf("Error starting gRPC server: %v", err)
 		}
-		err = a.GRPCServer.Server.Serve(listener)
 		logger.Log.Info("Starting GRPC server", zap.String("GRPCaddress", a.Cfg.GRPCAddr))
+		err = a.GRPCServer.Server.Serve(listener)
 		if err != nil {
 			logger.Log.Error("Error starting gRPC server", zap.Error(err))
 			log.Fatalf("Error starting gRPC server: %v", err)
