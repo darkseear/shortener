@@ -152,11 +152,11 @@ func (s *AuthService) UnaryAuthInterceptor() grpc.UnaryServerInterceptor {
 		}
 
 		// Добавляем в context для дальнейшего использования
-		newCtx = context.WithValue(ctx, contextKey("userID"), userID)
+		newCtx = context.WithValue(ctx, contextKey("userid"), userID)
 		newCtx = context.WithValue(newCtx, contextKey("client_ip"), clientIP)
 		newCtx = context.WithValue(newCtx, contextKey("auth_token"), token)
 		// Добавляем userID и auth_token в метаданные gRPC запроса
-		md = metadata.Pairs("userID", userID, "auth_token", token, "client_ip", clientIP)
+		md = metadata.Pairs("userid", userID, "auth_token", token, "client_ip", clientIP)
 		newCtx = metadata.NewIncomingContext(newCtx, md)
 		// Передаем новый контекст с userID дальше в цепочку вызовов
 		logger.Log.Info("Проверка токена прошла успешно")
@@ -176,9 +176,9 @@ func (s *AuthService) UnaryAuthInterceptor() grpc.UnaryServerInterceptor {
 
 // GetUserIDFromContext - извлекает userID из контекста запроса.
 func GetUserIDFromContext(ctx context.Context) (string, error) {
-	userID, ok := ctx.Value("userID").(string)
+	userID, ok := ctx.Value("userid").(string)
 	if !ok || userID == "" {
-		return "", errors.New("userID not found in context")
+		return "", errors.New("userid not found in context")
 	}
 	return userID, nil
 }
@@ -190,7 +190,7 @@ func GetUserIDFromMetadata(ctx context.Context) (string, error) {
 		return "", errors.New("metadata is not provided")
 	}
 
-	values := md["userID"]
+	values := md["userid"]
 	if len(values) == 0 {
 		return "", errors.New("userID not found in metadata")
 	}
