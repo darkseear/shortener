@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/darkseear/shortener/internal/proto/sortener";
+
+service Sortener {
+    rpc GetURL(GetURLRequest) returns (GetURLResponse);
+    rpc AddURL(AddURLRequest) returns (AddURLResponse);
+    rpc Shorten(ShortenRequest) returns (ShortenResponse);
+    rpc ShortenBatch(ShortenBatchRequest) returns (ShortenBatchResponse);
+    rpc PingDB(PingDBRequest) returns (PingDBResponse);
+    rpc ListURL(ListURLRequest) returns (ListURLResponse);
+    rpc DeleteURL(DeleteURLRequest) returns (DeleteURLResponse);
+    rpc Stats(StatsRequest) returns (StatsResponse);
+}
+
+// Сообщения-запросы и ответы для каждого метода.
+message GetURLRequest {
+    string short_url = 1;
+}
+message GetURLResponse {
+    string original_url = 1;
+}
+
+message AddURLRequest {
+    string url = 1;
+}
+message AddURLResponse {
+    string short_url = 1;
+}
+
+message ShortenRequest {
+    string url = 1;
+}
+message ShortenResponse {
+    string short_url = 1;
+}
+
+message ShortenBatchRequest {
+    repeated ShortenBatchRequestItem items = 1;
+}
+message ShortenBatchResponse {
+    repeated ShortenBatchResponseItem items = 1;
+}
+
+message ShortenBatchRequestItem {
+    string correlation_id = 1;
+    string original_url = 2;
+}
+
+message ShortenBatchResponseItem {
+    string correlation_id = 1;
+    string short_url = 2;
+}
+
+message URLItem {
+    string user_id = 1;
+    string short_url = 2;
+    string original_url = 3;
+}
+
+message PingDBRequest {}
+message PingDBResponse {
+    bool ok = 1;
+}
+
+message ListURLRequest {}
+message ListURLResponse {
+    repeated URLItem urls = 1;
+}
+
+message DeleteURLRequest {
+    repeated string short_urls = 1;
+}
+message DeleteURLResponse {
+    bool success = 1;
+}
+
+message StatsRequest {}
+message StatsResponse {
+    int64 urls = 1;
+    int64 users = 2;
+}
